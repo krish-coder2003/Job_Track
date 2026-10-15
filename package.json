@@ -1,0 +1,35 @@
+{
+  "name": "jobtrack",
+  "version": "1.0.0",
+  "description": "JobTrack - Modern Job Portal and Applicant Tracking System",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n \"SERVER,CLIENT\" -c \"cyan,magenta\" \"npm run server\" \"npm run client\"",
+    "client": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "client:preview": "npm --prefix client run preview",
+    "server": "npm --prefix server run dev",
+    "server:start": "npm --prefix server start",
+    "install:all": "npm install && npm --prefix client install && npm --prefix server install",
+    "lint": "npm --prefix client run lint && npm --prefix server run lint"
+  },
+  "keywords": [
+    "job-portal",
+    "applicant-tracking-system",
+    "ats",
+    "mern",
+    "react",
+    "express",
+    "mongodb",
+    "nodejs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
