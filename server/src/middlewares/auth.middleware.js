@@ -1,6 +1,13 @@
 import { verifyToken, COOKIE_NAME } from '../utils/jwt.js';
-import { UnauthorizedError, ForbiddenError, BadRequestError } from '../utils/errors.js';
+import {
+  UnauthorizedError,
+  ForbiddenError,
+  BadRequestError,
+  NotFoundError,
+} from '../utils/errors.js';
 import User, { USER_ROLES } from '../models/user.model.js';
+import Job from '../models/job.model.js';
+import mongoose from 'mongoose';
 
 /**
  * Authentication Middleware
@@ -49,6 +56,42 @@ export const authenticate = async (req, res, next) => {
 
     // 5. Attach authenticated user to request
     req.user = user;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Optional Authentication Middleware
+ *
+ * Extracts authenticated user if token is present, but allows guest access if absent or invalid.
+ */
+export const optionalAuthenticate = async (req, res, next) => {
+  try {
+    let token = null;
+
+    if (req.cookies && req.cookies[COOKIE_NAME]) {
+      token = req.cookies[COOKIE_NAME];
+    } else if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer ')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (token) {
+      try {
+        const decoded = verifyToken(token);
+        const user = await User.findById(decoded.id);
+        if (user && user.status === 'active') {
+          req.user = user;
+        }
+      } catch {
+        // Silently proceed as guest
+      }
+    }
+
     next();
   } catch (error) {
     next(error);
@@ -185,11 +228,53 @@ export const preventRoleChange = (req, res, next) => {
   next();
 };
 
+/**
+ * Job Ownership Verification Middleware
+ *
+ * Verifies that the requested Job exists and that the authenticated user is the recruiter
+ * who created it (or has an admin role).
+ * Attaches the retrieved Job document to req.job.
+ */
+export const checkJobOwnership = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next(new UnauthorizedError('Authentication required.'));
+    }
+
+    const { id } = req.params;
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return next(new BadRequestError(`Invalid job ID format: ${id}`));
+    }
+
+    const job = await Job.findById(id);
+    if (!job) {
+      return next(new NotFoundError(`Job with ID ${id} not found.`));
+    }
+
+    const isOwner = job.recruiter.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === USER_ROLES.ADMIN;
+
+    if (!isOwner && !isAdmin) {
+      return next(
+        new ForbiddenError('Access forbidden: You do not have permission to modify or delete this job.')
+      );
+    }
+
+    req.job = job;
+    next();
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   authenticate,
+  optionalAuthenticate,
   requireActiveAccount,
   authorize,
   checkOwnership,
+  checkJobOwnership,
   preventRoleChange,
 };
+
 
