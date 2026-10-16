@@ -1,5 +1,6 @@
 import User, { USER_ROLES, PUBLIC_ROLES } from '../models/user.model.js';
-import { ConflictError, ForbiddenError, BadRequestError } from '../utils/errors.js';
+import { ConflictError, ForbiddenError, BadRequestError, UnauthorizedError } from '../utils/errors.js';
+import { generateToken } from '../utils/jwt.js';
 
 /**
  * Service to register a new user in the system
@@ -54,6 +55,45 @@ export const registerUser = async (userData) => {
   return user.toPublicProfile();
 };
 
+/**
+ * Service to authenticate user with email and password
+ *
+ * @param {Object} credentials - { email, password }
+ * @returns {Promise<{ user: Object, token: string }>} Safe user and signed JWT
+ */
+export const loginUser = async ({ email, password }) => {
+  const normalizedEmail = email ? email.toLowerCase().trim() : '';
+
+  // 1. Fetch user including passwordHash for comparison
+  const user = await User.findOne({ email: normalizedEmail }).select('+passwordHash');
+
+  // Generic rejection message for non-existent users (prevents email enumeration)
+  if (!user) {
+    throw new UnauthorizedError('Invalid email or password.');
+  }
+
+  // 2. Verify password with bcrypt
+  const isPasswordValid = await user.comparePassword(password);
+  if (!isPasswordValid) {
+    throw new UnauthorizedError('Invalid email or password.');
+  }
+
+  // 3. Reject disabled accounts
+  if (user.status === 'disabled') {
+    throw new ForbiddenError('Your account has been disabled. Please contact support.');
+  }
+
+  // 4. Issue JWT
+  const token = generateToken({ id: user._id, role: user.role });
+
+  return {
+    user: user.toPublicProfile(),
+    token,
+  };
+};
+
 export default {
   registerUser,
+  loginUser,
 };
+

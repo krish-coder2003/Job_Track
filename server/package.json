@@ -8,9 +8,11 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint .",
-    "test": "node test/user.model.test.js && node test/auth.register.test.js",
+    "test": "node test/user.model.test.js && node test/auth.register.test.js && node test/auth.login.test.js",
     "test:model": "node test/user.model.test.js",
-    "test:auth": "node test/auth.register.test.js"
+    "test:register": "node test/auth.register.test.js",
+    "test:login": "node test/auth.login.test.js",
+    "test:auth": "node test/auth.register.test.js && node test/auth.login.test.js"
   },
   "keywords": [
     "express",
@@ -23,9 +25,11 @@
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0"
   },

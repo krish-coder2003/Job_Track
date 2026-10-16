@@ -67,3 +67,38 @@ export const validateRegister = (req, res, next) => {
 
   next();
 };
+
+/**
+ * Middleware to validate login payload
+ */
+export const validateLogin = (req, res, next) => {
+  const { email, password } = req.body || {};
+  const errors = [];
+
+  // 1. Email validation
+  if (!email || typeof email !== 'string' || email.trim().length === 0) {
+    errors.push({ field: 'email', message: 'Email is required' });
+  } else if (!EMAIL_REGEX.test(email.trim())) {
+    errors.push({ field: 'email', message: 'Please provide a valid email address' });
+  }
+
+  // 2. Password validation
+  if (!password || typeof password !== 'string' || password.length === 0) {
+    errors.push({ field: 'password', message: 'Password is required' });
+  }
+
+  if (errors.length > 0) {
+    return next(new BadRequestError('Validation failed', errors));
+  }
+
+  // Normalize email
+  req.body.email = email.toLowerCase().trim();
+
+  next();
+};
+
+export default {
+  validateRegister,
+  validateLogin,
+};
+
