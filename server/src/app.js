@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import healthRoutes from './routes/health.routes.js';
+import { sanitizeMongoURI } from './config/db.js';
 
 const app = express();
 
@@ -42,10 +43,11 @@ app.use((req, res, _next) => {
 
 // Global error handler
 app.use((err, req, res, _next) => {
-  console.error('Unhandled server error:', err);
+  const sanitizedMessage = sanitizeMongoURI(err.message || 'Internal Server Error');
+  console.error('Unhandled server error:', sanitizedMessage);
   res.status(err.status || 500).json({
     error: {
-      message: err.message || 'Internal Server Error',
+      message: sanitizedMessage,
     },
   });
 });
