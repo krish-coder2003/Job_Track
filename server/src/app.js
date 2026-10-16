@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import healthRoutes from './routes/health.routes.js';
-import { sanitizeMongoURI } from './config/db.js';
+import authRoutes from './routes/auth.routes.js';
+import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 
 const app = express();
 
@@ -29,27 +30,14 @@ app.get('/', (req, res) => {
   });
 });
 
-// Health check endpoint
+// API Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/health', healthRoutes);
 
 // 404 Not Found handler
-app.use((req, res, _next) => {
-  res.status(404).json({
-    error: 'Route Not Found',
-    path: req.originalUrl,
-    method: req.method,
-  });
-});
+app.use(notFoundHandler);
 
-// Global error handler
-app.use((err, req, res, _next) => {
-  const sanitizedMessage = sanitizeMongoURI(err.message || 'Internal Server Error');
-  console.error('Unhandled server error:', sanitizedMessage);
-  res.status(err.status || 500).json({
-    error: {
-      message: sanitizedMessage,
-    },
-  });
-});
+// Centralized error handler
+app.use(errorHandler);
 
 export default app;
