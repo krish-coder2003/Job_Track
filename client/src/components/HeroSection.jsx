@@ -52,14 +52,14 @@ export default function HeroSection() {
                 />
               </div>
 
-              <a
+              <Link
                 id="btn-search-jobs"
-                href="#system-health"
+                to="/jobs"
                 className="w-full sm:w-auto inline-flex items-center justify-center space-x-2 px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold shadow-md shadow-blue-600/25 transition-all shrink-0 cursor-pointer"
               >
                 <span>Find Jobs</span>
                 <ArrowRight className="w-4 h-4" />
-              </a>
+              </Link>
             </div>
           </div>
 

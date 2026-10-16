@@ -61,6 +61,13 @@ export default function Navbar({ healthStatus }) {
             Home
           </Link>
           <Link
+            to="/jobs"
+            className="hover:text-blue-600 transition-colors flex items-center space-x-1.5"
+          >
+            <Briefcase className="w-4 h-4 text-slate-400" />
+            <span>Find Jobs</span>
+          </Link>
+          <Link
             to="/dashboard"
             className="hover:text-blue-600 transition-colors flex items-center space-x-1.5"
           >
@@ -179,6 +186,14 @@ export default function Navbar({ healthStatus }) {
               className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
             >
               Home
+            </Link>
+            <Link
+              to="/jobs"
+              onClick={() => setMobileMenuOpen(false)}
+              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center space-x-2"
+            >
+              <Briefcase className="w-4 h-4 text-blue-600" />
+              <span>Find Jobs</span>
             </Link>
             <Link
               to="/dashboard"

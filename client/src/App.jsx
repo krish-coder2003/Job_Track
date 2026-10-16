@@ -4,6 +4,8 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PublicOnlyRoute from './components/auth/PublicOnlyRoute';
 import LandingPage from './pages/LandingPage';
+import JobsPage from './pages/JobsPage';
+import JobDetailPage from './pages/JobDetailPage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
@@ -16,8 +18,10 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            {/* Public Landing */}
+            {/* Public Landing & Jobs */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/jobs" element={<JobsPage />} />
+            <Route path="/jobs/:id" element={<JobDetailPage />} />
 
             {/* Public-only routes (redirect authenticated users to dashboard) */}
             <Route
