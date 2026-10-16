@@ -32,7 +32,7 @@ export default function LandingPage() {
   }, [fetchStatus]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-blue-600 selection:text-white">
       <Navbar healthStatus={healthData} />
       
       <main className="flex-grow">
