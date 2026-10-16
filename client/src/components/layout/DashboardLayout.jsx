@@ -1,62 +1,75 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import {
   Briefcase,
   LayoutDashboard,
   Users,
   FileText,
-  Settings,
-  Bell,
   Search,
   Menu,
   X,
   ChevronRight,
   LogOut,
   Sparkles,
+  BookmarkCheck,
+  Shield,
 } from 'lucide-react';
-
-const NAV_ITEMS = [
-  {
-    name: 'Overview',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    badge: null,
-  },
-  {
-    name: 'Job Listings',
-    href: '/dashboard/jobs',
-    icon: Briefcase,
-    badge: '12',
-  },
-  {
-    name: 'Candidates & ATS',
-    href: '/dashboard/candidates',
-    icon: Users,
-    badge: '48',
-  },
-  {
-    name: 'Applications',
-    href: '/dashboard/applications',
-    icon: FileText,
-    badge: null,
-  },
-  {
-    name: 'Settings',
-    href: '/dashboard/settings',
-    icon: Settings,
-    badge: null,
-  },
-];
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../common/Toast';
+import Badge from '../common/Badge';
 
 export function DashboardLayout({ children, userProfile }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user: authUser, logout } = useAuth();
+  const toast = useToast();
 
-  const user = userProfile || {
-    name: 'Alex Morgan',
-    email: 'alex.morgan@company.com',
-    role: 'recruiter',
+  const user = userProfile || authUser || {
+    name: 'Guest User',
+    email: 'guest@example.com',
+    role: 'candidate',
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      toast.info('You have logged out successfully.', 'Session Ended');
+      navigate('/login');
+    } catch {
+      toast.error('Failed to logout', 'Error');
+    }
+  };
+
+  // Role-aware navigation links
+  const getNavItems = () => {
+    if (user.role === 'recruiter') {
+      return [
+        { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Active Job Listings', href: '/dashboard/jobs', icon: Briefcase, badge: '14' },
+        { name: 'Candidate ATS', href: '/dashboard/candidates', icon: Users, badge: '28' },
+        { name: 'Review Applications', href: '/dashboard/applications', icon: FileText },
+      ];
+    }
+    if (user.role === 'admin') {
+      return [
+        { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'User Management', href: '/dashboard/users', icon: Users },
+        { name: 'All Job Postings', href: '/dashboard/jobs', icon: Briefcase },
+        { name: 'Audit & System', href: '/dashboard/audit', icon: Shield },
+      ];
+    }
+    // Candidate role (default)
+    return [
+      { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+      { name: 'Browse Jobs', href: '/dashboard/jobs', icon: Briefcase },
+      { name: 'My Applications', href: '/dashboard/applications', icon: FileText, badge: '3' },
+      { name: 'Saved Listings', href: '/dashboard/saved', icon: BookmarkCheck },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -90,7 +103,8 @@ export function DashboardLayout({ children, userProfile }) {
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
-              className="lg:hidden text-slate-400 hover:text-slate-600 p-1 rounded-md"
+              className="lg:hidden text-slate-400 hover:text-slate-600 p-1 rounded-md cursor-pointer"
+              aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
             </button>
@@ -99,10 +113,14 @@ export function DashboardLayout({ children, userProfile }) {
           {/* Navigation Items */}
           <div className="px-3 py-6 space-y-1">
             <p className="px-3 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">
-              Management
+              {user.role === 'recruiter'
+                ? 'Recruiter Workspace'
+                : user.role === 'admin'
+                ? 'Admin Administration'
+                : 'Job Seeker Portal'}
             </p>
 
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const isActive =
                 item.href === '/dashboard'
@@ -165,21 +183,30 @@ export function DashboardLayout({ children, userProfile }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 min-w-0">
               <div className="w-9 h-9 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
-                {user.name.charAt(0)}
+                {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900 truncate">{user.name}</p>
-                <p className="text-[11px] text-slate-500 capitalize">{user.role}</p>
+                <Badge
+                  variant={
+                    user.role === 'recruiter' ? 'navy' : user.role === 'admin' ? 'danger' : 'blue'
+                  }
+                  size="sm"
+                >
+                  {user.role}
+                </Badge>
               </div>
             </div>
 
-            <Link
-              to="/"
-              className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-white transition-colors"
-              title="Return to Public Site"
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-white transition-colors cursor-pointer"
+              title="Sign Out"
+              aria-label="Sign out"
             >
               <LogOut className="w-4 h-4" />
-            </Link>
+            </button>
           </div>
         </div>
       </aside>
@@ -192,15 +219,15 @@ export function DashboardLayout({ children, userProfile }) {
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden text-slate-500 hover:text-slate-700 p-1 rounded-md"
+              className="lg:hidden text-slate-500 hover:text-slate-700 p-1 rounded-md cursor-pointer"
               aria-label="Open sidebar"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            {/* Breadcrumb / Section Name */}
+            {/* Breadcrumb */}
             <div className="hidden sm:flex items-center space-x-2 text-xs text-slate-500">
-              <span>Recruiter Portal</span>
+              <span className="capitalize">{user.role} Portal</span>
               <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
               <span className="font-semibold text-slate-900">Workspace Dashboard</span>
             </div>
@@ -208,28 +235,19 @@ export function DashboardLayout({ children, userProfile }) {
 
           {/* Top Actions */}
           <div className="flex items-center space-x-3">
-            {/* Search Mockup */}
             <div className="hidden md:flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-400 w-64">
               <Search className="w-3.5 h-3.5 text-slate-400" />
-              <span>Search candidates or jobs...</span>
+              <span>Search platform...</span>
             </div>
 
-            {/* Notification button */}
             <button
               type="button"
-              className="relative p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-colors"
-              aria-label="Notifications"
+              onClick={handleLogout}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-rose-600 transition-colors flex items-center space-x-1 cursor-pointer"
             >
-              <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-blue-600 rounded-full" />
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Sign Out</span>
             </button>
-
-            <Link
-              to="/ui"
-              className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-            >
-              Inspect UI Kit
-            </Link>
           </div>
         </header>
 
@@ -239,5 +257,14 @@ export function DashboardLayout({ children, userProfile }) {
     </div>
   );
 }
+
+DashboardLayout.propTypes = {
+  children: PropTypes.node,
+  userProfile: PropTypes.shape({
+    name: PropTypes.string,
+    email: PropTypes.string,
+    role: PropTypes.string,
+  }),
+};
 
 export default DashboardLayout;
