@@ -1,5 +1,11 @@
 import User, { USER_ROLES, PUBLIC_ROLES } from '../models/user.model.js';
-import { ConflictError, ForbiddenError, BadRequestError, UnauthorizedError } from '../utils/errors.js';
+import {
+  ConflictError,
+  ForbiddenError,
+  BadRequestError,
+  UnauthorizedError,
+  NotFoundError,
+} from '../utils/errors.js';
 import { generateToken } from '../utils/jwt.js';
 
 /**
@@ -92,8 +98,56 @@ export const loginUser = async ({ email, password }) => {
   };
 };
 
+/**
+ * Service to update user profile information
+ * Ensures non-admin users cannot alter their own role.
+ *
+ * @param {string} userId - User ID to update
+ * @param {Object} updateData - Profile updates
+ * @param {string} requesterRole - Role of the requesting user
+ * @returns {Promise<Object>} Updated safe public profile
+ */
+export const updateUserProfile = async (
+  userId,
+  updateData,
+  requesterRole = USER_ROLES.CANDIDATE
+) => {
+  // Reject attempt to change role unless requester is an administrator
+  if (updateData.role !== undefined && requesterRole !== USER_ROLES.ADMIN) {
+    throw new ForbiddenError('Users cannot change their own role through profile updates.');
+  }
+
+  const allowedFields = ['name', 'phone', 'location', 'skills', 'experience', 'resume'];
+  const updatePayload = {};
+
+  for (const field of allowedFields) {
+    if (updateData[field] !== undefined) {
+      updatePayload[field] = updateData[field];
+    }
+  }
+
+  // Only allow updating role if admin
+  if (requesterRole === USER_ROLES.ADMIN && updateData.role !== undefined) {
+    updatePayload.role = updateData.role;
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    userId,
+    { $set: updatePayload },
+    { new: true, runValidators: true }
+  );
+
+  if (!updatedUser) {
+    throw new NotFoundError('User account not found.');
+  }
+
+  return updatedUser.toPublicProfile();
+};
+
 export default {
   registerUser,
   loginUser,
+  updateUserProfile,
 };
+
 

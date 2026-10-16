@@ -8,10 +8,11 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint .",
-    "test": "node test/user.model.test.js && node test/auth.register.test.js && node test/auth.login.test.js",
+    "test": "node test/user.model.test.js && node test/auth.register.test.js && node test/auth.login.test.js && node test/auth.authorization.test.js",
     "test:model": "node test/user.model.test.js",
     "test:register": "node test/auth.register.test.js",
     "test:login": "node test/auth.login.test.js",
+    "test:authz": "node test/auth.authorization.test.js",
     "test:auth": "node test/auth.register.test.js && node test/auth.login.test.js"
   },
   "keywords": [

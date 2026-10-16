@@ -1,4 +1,4 @@
-import { registerUser, loginUser } from '../services/auth.service.js';
+import { registerUser, loginUser, updateUserProfile } from '../services/auth.service.js';
 import { COOKIE_NAME, getCookieOptions } from '../utils/jwt.js';
 
 /**
@@ -74,10 +74,32 @@ export const getMe = (req, res) => {
   });
 };
 
+/**
+ * Controller to handle profile updates
+ */
+export const updateProfile = async (req, res, next) => {
+  try {
+    const targetUserId = req.params.userId || req.user._id;
+    const user = await updateUserProfile(targetUserId, req.body, req.user.role);
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   register,
   login,
   logout,
   getMe,
+  updateProfile,
 };
+
 
