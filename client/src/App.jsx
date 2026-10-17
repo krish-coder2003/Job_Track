@@ -11,12 +11,14 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import UiShowcasePage from './pages/UiShowcasePage';
 import NotFoundPage from './pages/NotFoundPage';
+import ScrollToAnchor from './components/common/ScrollToAnchor';
 
 export default function App() {
   return (
     <ToastProvider>
       <AuthProvider>
         <BrowserRouter>
+          <ScrollToAnchor />
           <Routes>
             {/* Public Landing & Jobs */}
             <Route path="/" element={<LandingPage />} />

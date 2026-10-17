@@ -81,8 +81,8 @@ export default function Navbar({ healthStatus }) {
             <Sparkles className="w-3.5 h-3.5 text-blue-500" />
             <span>UI Kit</span>
           </Link>
-          <a
-            href="/#system-health"
+          <Link
+            to="/#system-health"
             className="hover:text-blue-600 transition-colors flex items-center space-x-1.5"
           >
             <span>System Health</span>
@@ -91,7 +91,7 @@ export default function Navbar({ healthStatus }) {
                 isHealthy ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
               }`}
             />
-          </a>
+          </Link>
         </nav>
 
         {/* Right Action Buttons */}
@@ -211,13 +211,18 @@ export default function Navbar({ healthStatus }) {
               <Sparkles className="w-4 h-4 text-blue-600" />
               <span>UI Components Showcase</span>
             </Link>
-            <a
-              href="/#system-health"
+            <Link
+              to="/#system-health"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="px-3 py-2 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 flex items-center justify-between"
             >
-              System Health Check
-            </a>
+              <span>System Health Check</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isHealthy ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                }`}
+              />
+            </Link>
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">

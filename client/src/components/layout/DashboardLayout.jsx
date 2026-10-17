@@ -46,26 +46,26 @@ export function DashboardLayout({ children, userProfile }) {
   const getNavItems = () => {
     if (user.role === 'recruiter') {
       return [
-        { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'Active Job Listings', href: '/dashboard/jobs', icon: Briefcase, badge: '14' },
-        { name: 'Candidate ATS', href: '/dashboard/candidates', icon: Users, badge: '28' },
-        { name: 'Review Applications', href: '/dashboard/applications', icon: FileText },
+        { name: 'Overview & Metrics', href: '/dashboard', icon: LayoutDashboard },
+        { name: 'Active Job Listings', href: '/dashboard#recruiter-section', icon: Briefcase },
+        { name: 'Find Jobs & Board', href: '/jobs', icon: Users },
+        { name: 'System Diagnostics', href: '/#system-health', icon: Shield },
       ];
     }
     if (user.role === 'admin') {
       return [
         { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-        { name: 'User Management', href: '/dashboard/users', icon: Users },
-        { name: 'All Job Postings', href: '/dashboard/jobs', icon: Briefcase },
-        { name: 'Audit & System', href: '/dashboard/audit', icon: Shield },
+        { name: 'User Management', href: '/dashboard?tab=users', icon: Users },
+        { name: 'Job Moderation', href: '/dashboard?tab=jobs', icon: Briefcase },
+        { name: 'System Health Check', href: '/#system-health', icon: Shield },
       ];
     }
     // Candidate role (default)
     return [
       { name: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-      { name: 'Browse Jobs', href: '/dashboard/jobs', icon: Briefcase },
-      { name: 'My Applications', href: '/dashboard/applications', icon: FileText, badge: '3' },
-      { name: 'Saved Listings', href: '/dashboard/saved', icon: BookmarkCheck },
+      { name: 'Browse Jobs', href: '/jobs', icon: Briefcase },
+      { name: 'My Applications', href: '/dashboard#candidate-applications', icon: FileText },
+      { name: 'Profile & Resume', href: '/dashboard#candidate-profile', icon: BookmarkCheck },
     ];
   };
 
@@ -122,9 +122,12 @@ export function DashboardLayout({ children, userProfile }) {
 
             {navItems.map((item) => {
               const Icon = item.icon;
+              const currentPathAndSearch = location.pathname + location.search + location.hash;
               const isActive =
                 item.href === '/dashboard'
-                  ? location.pathname === '/dashboard'
+                  ? location.pathname === '/dashboard' && !location.search && !location.hash
+                  : item.href.includes('?') || item.href.includes('#')
+                  ? currentPathAndSearch === item.href || currentPathAndSearch.startsWith(item.href)
                   : location.pathname.startsWith(item.href);
 
               return (

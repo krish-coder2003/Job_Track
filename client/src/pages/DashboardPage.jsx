@@ -54,16 +54,24 @@ export default function DashboardPage() {
         {isAdmin && <AdminDashboardSection />}
 
         {/* Recruiter Live View */}
-        {isRecruiter && <RecruiterDashboardSection />}
+        {isRecruiter && (
+          <div id="recruiter-section">
+            <RecruiterDashboardSection />
+          </div>
+        )}
 
         {/* Candidate View: Real Backend Applications Management & Profile */}
         {!isRecruiter && !isAdmin && (
           <>
             {/* Real Applications Section with Summary, Status Filter, Table, Modal & Cancel */}
-            <CandidateApplicationsSection />
+            <div id="candidate-applications">
+              <CandidateApplicationsSection />
+            </div>
 
             {/* Candidate Profile & Resume Section */}
-            <CandidateProfileSection user={user} onProfileUpdated={refreshUser} />
+            <div id="candidate-profile">
+              <CandidateProfileSection user={user} onProfileUpdated={refreshUser} />
+            </div>
           </>
         )}
 

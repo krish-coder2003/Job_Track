@@ -23,8 +23,8 @@ export default function Footer() {
           <div>
             <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Platform</h4>
             <ul className="space-y-2 text-xs text-slate-600">
-              <li><a href="#features" className="hover:text-blue-600 transition-colors">Candidate Management</a></li>
-              <li><a href="#features" className="hover:text-blue-600 transition-colors">Pipeline Automation</a></li>
+              <li><Link to="/dashboard" className="hover:text-blue-600 transition-colors">Candidate Management</Link></li>
+              <li><Link to="/#features" className="hover:text-blue-600 transition-colors">Pipeline Automation</Link></li>
               <li><Link to="/dashboard" className="hover:text-blue-600 transition-colors">Recruiter Dashboard</Link></li>
               <li><Link to="/ui" className="hover:text-blue-600 transition-colors">UI Design System</Link></li>
             </ul>
@@ -34,9 +34,9 @@ export default function Footer() {
           <div>
             <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Developers & Ops</h4>
             <ul className="space-y-2 text-xs text-slate-600">
-              <li><a href="#system-health" className="hover:text-blue-600 transition-colors">API Diagnostics</a></li>
-              <li><a href="#architecture" className="hover:text-blue-600 transition-colors">Architecture Overview</a></li>
-              <li><span className="text-slate-400">Node.js Express & MongoDB</span></li>
+              <li><Link to="/#system-health" className="hover:text-blue-600 transition-colors">API Diagnostics</Link></li>
+              <li><Link to="/#architecture" className="hover:text-blue-600 transition-colors">Architecture Overview</Link></li>
+              <li><Link to="/#architecture" className="hover:text-blue-600 transition-colors">Node.js Express & MongoDB</Link></li>
             </ul>
           </div>
 
@@ -46,10 +46,14 @@ export default function Footer() {
             <p className="text-xs text-slate-500 leading-relaxed mb-3">
               Protected with HTTP-only session tokens, strict role-based access control, and bcrypt password encryption.
             </p>
-            <span className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+            <Link
+              to="/#architecture"
+              title="View Security & Architectural Verification"
+              className="inline-flex items-center space-x-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200 px-2.5 py-1 rounded-md transition-colors"
+            >
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Security Protocols Active</span>
-            </span>
+            </Link>
           </div>
         </div>
 
@@ -57,7 +61,7 @@ export default function Footer() {
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>© {new Date().getFullYear()} JobTrack ATS. All rights reserved.</p>
           <div className="flex items-center space-x-6">
-            <a href="#system-health" className="hover:text-slate-900 transition-colors">Diagnostics</a>
+            <Link to="/#system-health" className="hover:text-slate-900 transition-colors">Diagnostics</Link>
             <Link to="/ui" className="hover:text-slate-900 transition-colors">UI Foundation Kit</Link>
             <Link to="/dashboard" className="hover:text-slate-900 transition-colors">Portal</Link>
           </div>

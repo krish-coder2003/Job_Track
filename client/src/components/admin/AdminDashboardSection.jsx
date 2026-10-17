@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../common/Card';
 import Badge from '../common/Badge';
 import Button from '../common/Button';
@@ -39,9 +40,26 @@ import {
 
 export default function AdminDashboardSection() {
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
 
   // Active sub-tab: 'users' or 'jobs'
-  const [activeTab, setActiveTab] = useState('users');
+  const [activeTab, setActiveTab] = useState(tabFromUrl === 'jobs' ? 'jobs' : 'users');
+
+  useEffect(() => {
+    if (tabFromUrl === 'jobs' || tabFromUrl === 'users') {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', newTab);
+      return next;
+    });
+  };
 
   // Platform statistics
   const [stats, setStats] = useState(null);
@@ -345,7 +363,7 @@ export default function AdminDashboardSection() {
         <div className="px-6 border-b border-slate-100 flex items-center gap-4 bg-slate-50/50">
           <button
             type="button"
-            onClick={() => setActiveTab('users')}
+            onClick={() => handleTabChange('users')}
             className={`py-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'users'
                 ? 'border-blue-600 text-blue-600'
@@ -358,7 +376,7 @@ export default function AdminDashboardSection() {
 
           <button
             type="button"
-            onClick={() => setActiveTab('jobs')}
+            onClick={() => handleTabChange('jobs')}
             className={`py-3 text-xs font-bold border-b-2 transition-all cursor-pointer flex items-center gap-2 ${
               activeTab === 'jobs'
                 ? 'border-blue-600 text-blue-600'
