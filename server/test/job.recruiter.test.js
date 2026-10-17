@@ -132,6 +132,16 @@ async function runRecruiterDashboardTests() {
       resume: candidate.resume,
       coverLetter: 'I am very excited to apply for this Senior Frontend Engineer position.',
       status: APPLICATION_STATUS.PENDING,
+      statusHistory: [
+        {
+          status: APPLICATION_STATUS.PENDING,
+          changedBy: candidate._id,
+          changedByName: candidate.name,
+          changedByRole: candidate.role,
+          changedAt: new Date(),
+          note: 'Application submitted',
+        },
+      ],
     });
 
     // =============================================================
@@ -301,6 +311,200 @@ async function runRecruiterDashboardTests() {
       .send({ status: 'accepted' });
 
     assert(candidateStageRes.status === 403, 'Candidate cannot update hiring stage (403 Forbidden)');
+
+    // =============================================================
+    // TEST GROUP 6: Status Transitions & Status History Tracking
+    // =============================================================
+    console.log('\n[Test Group 6] Status Transitions & Status History Tracking:');
+
+    // 1. Initial application statusHistory
+    const appFresh = await Application.findById(appA1._id);
+    assert(Array.isArray(appFresh.statusHistory), 'statusHistory is an array');
+    assert(appFresh.statusHistory.length >= 1, 'Initial submission recorded in statusHistory');
+    assert(appFresh.statusHistory[0].status === 'pending', 'Initial status recorded is pending');
+    assert(appFresh.statusHistory[0].changedBy.toString() === candidate._id.toString(), 'Initial actor is candidate');
+
+    // 2. Allowed transition: shortlisted -> interviewing
+    const transition1Res = await request(app)
+      .patch(`/api/applications/${appA1._id}/status`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`)
+      .send({ status: 'interviewing', note: 'Passed technical screen' });
+
+    assert(transition1Res.status === 200, 'Transition shortlisted -> interviewing returns 200 OK');
+    assert(transition1Res.body.data.application.status === 'interviewing', 'Status changed to interviewing');
+
+    // 3. Allowed transition: interviewing -> accepted
+    const transition2Res = await request(app)
+      .patch(`/api/applications/${appA1._id}/status`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`)
+      .send({ status: 'accepted', note: 'Offer accepted by team' });
+
+    assert(transition2Res.status === 200, 'Transition interviewing -> accepted returns 200 OK');
+    assert(transition2Res.body.data.application.status === 'accepted', 'Status changed to accepted');
+
+    // 4. Illegal transition: accepted -> pending (not allowed)
+    const illegalJumpRes = await request(app)
+      .patch(`/api/applications/${appA1._id}/status`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`)
+      .send({ status: 'pending' });
+
+    assert(illegalJumpRes.status === 400, 'Illegal jump accepted -> pending returns 400 Bad Request');
+    assert(
+      illegalJumpRes.body.message.toLowerCase().includes('cannot transition'),
+      'Error message identifies illegal transition'
+    );
+
+    // 5. Candidate cancellation permitted only for pending/reviewing
+    const candidateIllegalCancelRes = await request(app)
+      .patch(`/api/applications/${appA1._id}/cancel`)
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(
+      candidateIllegalCancelRes.status === 400,
+      'Candidate cannot cancel accepted application (400 Bad Request)'
+    );
+
+    // 6. Test cancellation on fresh pending application
+    const jobA3 = await Job.create({
+      title: 'QA Automation Engineer',
+      company: 'RecruiterTest Corp',
+      description: 'Cypress and Playwright testing expert.',
+      location: 'Remote',
+      jobType: JOB_TYPES.FULL_TIME,
+      workMode: WORK_MODES.REMOTE,
+      experienceLevel: EXPERIENCE_LEVELS.MID,
+      status: JOB_STATUS.ACTIVE,
+      isApproved: true,
+      recruiter: recruiterA._id,
+    });
+
+    const appA3 = await Application.create({
+      candidate: candidate._id,
+      job: jobA3._id,
+      resume: candidate.resume,
+      coverLetter: 'Interested in QA automation.',
+      status: APPLICATION_STATUS.PENDING,
+      statusHistory: [
+        {
+          status: APPLICATION_STATUS.PENDING,
+          changedBy: candidate._id,
+          changedByName: candidate.name,
+          changedByRole: candidate.role,
+          changedAt: new Date(),
+          note: 'Application submitted',
+        },
+      ],
+    });
+
+    const candidateCancelRes = await request(app)
+      .patch(`/api/applications/${appA3._id}/cancel`)
+      .set('Authorization', `Bearer ${tokenCandidate}`)
+      .send({ reason: 'Found another offer' });
+
+    assert(candidateCancelRes.status === 200, 'Candidate cancels pending application returns 200 OK');
+    assert(candidateCancelRes.body.data.application.status === 'withdrawn', 'Status changed to withdrawn');
+
+    // Subsequent transition on withdrawn terminal state is prohibited
+    const terminalTransitionRes = await request(app)
+      .patch(`/api/applications/${appA3._id}/status`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`)
+      .send({ status: 'interviewing' });
+
+    assert(terminalTransitionRes.status === 400, 'Transition on terminal withdrawn state returns 400 Bad Request');
+
+    // =============================================================
+    // TEST GROUP 7: Private Internal Recruiter Notes & Confidentiality
+    // =============================================================
+    console.log('\n[Test Group 7] Private Internal Notes & Confidentiality:');
+
+    // 1. Recruiter A adds private internal note
+    const addNoteRes = await request(app)
+      .patch(`/api/applications/${appA1._id}/notes`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`)
+      .send({ note: 'Candidate excelled in system architecture interview. Highly recommended.' });
+
+    assert(addNoteRes.status === 200, 'Recruiter adds internal note returns 200 OK');
+    assert(Array.isArray(addNoteRes.body.data.application.notes), 'Notes is an array in response');
+    assert(addNoteRes.body.data.application.notes.length === 1, '1 note recorded');
+    assert(
+      addNoteRes.body.data.application.notes[0].text.includes('Candidate excelled'),
+      'Note content matches'
+    );
+
+    // 2. Empty note yields 400 Bad Request
+    const emptyNoteRes = await request(app)
+      .patch(`/api/applications/${appA1._id}/notes`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`)
+      .send({ note: '   ' });
+
+    assert(emptyNoteRes.status === 400, 'Empty note yields 400 Bad Request');
+
+    // 3. Recruiter B attempting to add note to Recruiter A job application -> 403 Forbidden
+    const crossNoteRes = await request(app)
+      .patch(`/api/applications/${appA1._id}/notes`)
+      .set('Authorization', `Bearer ${tokenRecruiterB}`)
+      .send({ note: 'Unauthorized note' });
+
+    assert(crossNoteRes.status === 403, 'Recruiter B adding note to Recruiter A app yields 403 Forbidden');
+
+    // 4. Candidate attempting to add note -> 403 Forbidden
+    const candidateAddNoteRes = await request(app)
+      .patch(`/api/applications/${appA1._id}/notes`)
+      .set('Authorization', `Bearer ${tokenCandidate}`)
+      .send({ note: 'Candidate trying to add note' });
+
+    assert(candidateAddNoteRes.status === 403, 'Candidate adding internal note yields 403 Forbidden');
+
+    // 5. PRIVACY CHECK: Candidate views single application details -> internal notes hidden!
+    const candidateDetailsRes = await request(app)
+      .get(`/api/applications/${appA1._id}`)
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(candidateDetailsRes.status === 200, 'Candidate views application details returns 200 OK');
+    assert(
+      candidateDetailsRes.body.data.application.notes === undefined,
+      'Internal notes strictly hidden from candidate in single application view'
+    );
+    assert(
+      Array.isArray(candidateDetailsRes.body.data.application.statusHistory),
+      'Candidate CAN view status history'
+    );
+
+    // 6. PRIVACY CHECK: Candidate views my applications list -> internal notes hidden!
+    const candidateMyAppsRes = await request(app)
+      .get('/api/applications/my')
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(candidateMyAppsRes.status === 200, 'Candidate views my applications returns 200 OK');
+    for (const appItem of candidateMyAppsRes.body.data.applications) {
+      assert(
+        appItem.notes === undefined,
+        'Internal notes strictly hidden from candidate in list view'
+      );
+    }
+
+    // 7. Recruiter views application details -> internal notes visible!
+    const recruiterDetailsRes = await request(app)
+      .get(`/api/applications/${appA1._id}`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`);
+
+    assert(recruiterDetailsRes.status === 200, 'Recruiter views application details returns 200 OK');
+    assert(
+      Array.isArray(recruiterDetailsRes.body.data.application.notes),
+      'Recruiter can view internal notes'
+    );
+    assert(
+      recruiterDetailsRes.body.data.application.notes.length === 1,
+      'Recruiter sees the private note'
+    );
+
+    // 8. Recruiter queries job applicants with status filter & search
+    const filterApplicantsRes = await request(app)
+      .get(`/api/jobs/${jobA1._id}/applications?search=Carol`)
+      .set('Authorization', `Bearer ${tokenRecruiterA}`);
+
+    assert(filterApplicantsRes.status === 200, 'Recruiter search applicants returns 200 OK');
+    assert(filterApplicantsRes.body.data.applications.length === 1, 'Search finds Carol');
 
     console.log('\n----------------------------------------------------');
     console.log(`Summary: ${passed}/${total} assertions PASSED.`);

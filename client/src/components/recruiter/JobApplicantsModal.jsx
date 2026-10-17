@@ -7,6 +7,7 @@ import { useToast } from '../common/Toast';
 import {
   getJobApplicationsApi,
   updateApplicationStatusApi,
+  addApplicationNoteApi,
 } from '../../api/application.api';
 import {
   formatDate,
@@ -25,15 +26,35 @@ import {
   Sparkles,
   ExternalLink,
   ChevronDown,
+  Search,
+  MessageSquare,
+  Lock,
+  Plus,
+  Send,
+  History,
+  UserCheck,
+  XCircle,
+  Filter,
 } from 'lucide-react';
 
+const STATUS_FILTERS = [
+  { id: 'all', label: 'All Applicants' },
+  { id: 'pending', label: 'Submitted' },
+  { id: 'reviewing', label: 'In Review' },
+  { id: 'shortlisted', label: 'Shortlisted' },
+  { id: 'interviewing', label: 'Interview' },
+  { id: 'accepted', label: 'Accepted' },
+  { id: 'rejected', label: 'Rejected' },
+  { id: 'withdrawn', label: 'Withdrawn' },
+];
+
 const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Submitted' },
+  { value: 'pending', label: 'Submitted / Pending' },
   { value: 'reviewing', label: 'In Review' },
-  { value: 'shortlisted', label: 'Shortlist' },
-  { value: 'interviewing', label: 'Interview' },
-  { value: 'accepted', label: 'Accept / Offer' },
-  { value: 'rejected', label: 'Reject' },
+  { value: 'shortlisted', label: 'Shortlisted' },
+  { value: 'interviewing', label: 'Interviewing' },
+  { value: 'accepted', label: 'Accepted / Offered' },
+  { value: 'rejected', label: 'Rejected' },
 ];
 
 export default function JobApplicantsModal({ isOpen, onClose, job }) {
@@ -42,50 +63,117 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
   const [applicants, setApplicants] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [updatingId, setUpdatingId] = useState(null);
-  const [selectedApplicantDetails, setSelectedApplicantDetails] = useState(null);
 
+  // Filters & Search
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Selected applicant for detailed inspection
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
+
+  // Status updating state
+  const [updatingId, setUpdatingId] = useState(null);
+  const [statusNote, setStatusNote] = useState('');
+
+  // Internal notes state
+  const [newNoteText, setNewNoteText] = useState('');
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
+  // Fetch applicants for this job
   const fetchApplicants = useCallback(async () => {
     if (!job?._id) return;
     setIsLoading(true);
     setError(null);
     try {
-      const response = await getJobApplicationsApi(job._id);
-      setApplicants(response.data?.applications || []);
+      const params = {};
+      if (statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
+      const response = await getJobApplicationsApi(job._id, params);
+      const list = response.data?.applications || [];
+      setApplicants(list);
+
+      // Keep selected applicant up to date
+      if (selectedApplicant) {
+        const updated = list.find((a) => a._id === selectedApplicant._id);
+        if (updated) setSelectedApplicant(updated);
+      }
     } catch (err) {
       setError(err.message || 'Failed to retrieve applicants for this position.');
     } finally {
       setIsLoading(false);
     }
-  }, [job?._id]);
+  }, [job?._id, statusFilter, searchQuery, selectedApplicant]);
 
   useEffect(() => {
     if (isOpen && job?._id) {
       fetchApplicants();
-      setSelectedApplicantDetails(null);
+    } else {
+      setSelectedApplicant(null);
+      setStatusFilter('all');
+      setSearchQuery('');
     }
-  }, [isOpen, job?._id, fetchApplicants]);
+  }, [isOpen, job?._id, statusFilter, searchQuery]); // Re-fetch on filter change
 
-  const handleStatusChange = async (applicationId, newStatus) => {
+  // Handle stage/status update with transition validation
+  const handleStatusChange = async (applicationId, newStatus, optionalNote = '') => {
     setUpdatingId(applicationId);
     try {
-      await updateApplicationStatusApi(applicationId, newStatus);
+      const response = await updateApplicationStatusApi(
+        applicationId,
+        newStatus,
+        optionalNote || statusNote
+      );
       toast.success(
         `Candidate status updated to "${formatApplicationStatus(newStatus).label}".`,
         'Status Updated'
       );
+
+      const updatedApp = response.data?.application;
+
       setApplicants((prev) =>
-        prev.map((app) =>
-          app._id === applicationId ? { ...app, status: newStatus } : app
-        )
+        prev.map((app) => (app._id === applicationId ? updatedApp || { ...app, status: newStatus } : app))
       );
-      if (selectedApplicantDetails?._id === applicationId) {
-        setSelectedApplicantDetails((prev) => ({ ...prev, status: newStatus }));
+
+      if (selectedApplicant?._id === applicationId) {
+        setSelectedApplicant(updatedApp || { ...selectedApplicant, status: newStatus });
       }
+      setStatusNote('');
     } catch (err) {
-      toast.error(err.message || 'Failed to update application status.', 'Error');
+      toast.error(err.message || 'Failed to update application status.', 'Transition Error');
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  // Handle adding a private internal recruiter note
+  const handleAddNote = async (applicationId) => {
+    if (!newNoteText.trim()) {
+      toast.error('Note text cannot be empty.', 'Validation Error');
+      return;
+    }
+
+    setIsAddingNote(true);
+    try {
+      const response = await addApplicationNoteApi(applicationId, newNoteText.trim());
+      toast.success('Internal note added successfully.', 'Note Saved');
+
+      const updatedApp = response.data?.application;
+      if (updatedApp) {
+        setApplicants((prev) =>
+          prev.map((app) => (app._id === applicationId ? updatedApp : app))
+        );
+        setSelectedApplicant(updatedApp);
+      }
+      setNewNoteText('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to add internal note.', 'Note Error');
+    } finally {
+      setIsAddingNote(false);
     }
   };
 
@@ -95,27 +183,79 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={`Applicants for ${job?.title || 'Job Listing'}`}
+      title={`Applicant Management • ${job?.title || 'Job Listing'}`}
       size="xl"
       footer={
-        <Button variant="secondary" size="sm" onClick={onClose}>
-          Close
-        </Button>
+        <div className="flex items-center justify-between w-full text-xs">
+          <div className="flex items-center gap-1.5 text-slate-500">
+            <Lock className="w-3.5 h-3.5 text-amber-500" />
+            <span>Recruiter internal notes & pipeline controls are private and secured.</span>
+          </div>
+          <Button variant="secondary" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        </div>
       }
     >
       <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-        {/* Job Header Bar */}
+        {/* Job Summary Banner */}
         <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
           <div>
             <div className="text-sm font-bold text-slate-900">{job?.title}</div>
             <div className="text-slate-600">
-              {job?.company} • {job?.location} • {job?.jobType}
+              {job?.company} • {job?.location} • <span className="capitalize">{job?.jobType}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span className="font-semibold text-blue-900 bg-blue-100/70 px-2.5 py-1 rounded-md">
-              {applicants.length} Total Applicant{applicants.length === 1 ? '' : 's'}
+              {applicants.length} Applicant{applicants.length === 1 ? '' : 's'}
             </span>
+            <Badge variant={job?.status === 'active' ? 'success' : 'gray'} dot size="sm">
+              {job?.status}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Filters and Search Bar */}
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-sm">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search candidate name or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800"
+              />
+            </div>
+
+            {/* Total Filtered Count */}
+            <div className="text-xs text-slate-500 self-end sm:self-center">
+              Showing <strong>{applicants.length}</strong> matching candidates
+            </div>
+          </div>
+
+          {/* Status Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            {STATUS_FILTERS.map((tab) => {
+              const isSelected = statusFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`px-2.5 py-1 rounded-md font-medium whitespace-nowrap cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -151,32 +291,37 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
               <Users className="w-6 h-6" />
             </div>
             <div className="max-w-sm mx-auto space-y-1">
-              <h4 className="text-sm font-bold text-slate-900">No Applicants Yet</h4>
+              <h4 className="text-sm font-bold text-slate-900">No Applicants Found</h4>
               <p className="text-xs text-slate-500">
-                Candidates who apply to this active job listing will appear here in real-time.
+                {searchQuery || statusFilter !== 'all'
+                  ? 'No candidates match the specified status or search filter.'
+                  : 'Candidates who apply to this active job listing will appear here in real-time.'}
               </p>
             </div>
           </div>
         )}
 
-        {/* Applicants List / Table */}
+        {/* Applicants List & Detail View */}
         {!isLoading && !error && applicants.length > 0 && (
           <div className="space-y-3">
             {applicants.map((app) => {
               const candidate = app.candidate || {};
               const statusMeta = formatApplicationStatus(app.status);
               const isUpdating = updatingId === app._id;
-              const isSelected = selectedApplicantDetails?._id === app._id;
+              const isSelected = selectedApplicant?._id === app._id;
+              const notesCount = app.notes?.length || 0;
+              const historyCount = app.statusHistory?.length || 0;
 
               return (
                 <div
                   key={app._id}
                   className={`p-4 rounded-xl border transition-all ${
                     isSelected
-                      ? 'border-blue-400 bg-blue-50/20 shadow-xs'
+                      ? 'border-blue-500 bg-blue-50/20 shadow-xs'
                       : 'border-slate-200 hover:border-slate-300 bg-white'
                   }`}
                 >
+                  {/* Summary Row */}
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                     {/* Candidate Info */}
                     <div className="space-y-1">
@@ -190,6 +335,14 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
                         <Badge variant={statusMeta.variant} dot size="sm">
                           {statusMeta.label}
                         </Badge>
+
+                        {/* Internal notes indicator */}
+                        {notesCount > 0 && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold">
+                            <MessageSquare className="w-3 h-3" />
+                            <span>{notesCount} note{notesCount === 1 ? '' : 's'}</span>
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-0.5">
@@ -217,7 +370,7 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
                         </div>
                       </div>
 
-                      {/* Skills Tags */}
+                      {/* Candidate Skills */}
                       {candidate.skills && candidate.skills.length > 0 && (
                         <div className="flex flex-wrap gap-1 pt-1.5">
                           {candidate.skills.slice(0, 6).map((skill) => (
@@ -237,24 +390,22 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
                       )}
                     </div>
 
-                    {/* Stage Selector & Action Details */}
+                    {/* Status Controls & Candidate Details Toggle */}
                     <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
                       <Button
                         variant={isSelected ? 'secondary' : 'outline'}
                         size="sm"
-                        onClick={() =>
-                          setSelectedApplicantDetails(isSelected ? null : app)
-                        }
+                        onClick={() => setSelectedApplicant(isSelected ? null : app)}
                         leftIcon={<FileText className="w-3.5 h-3.5" />}
                       >
-                        {isSelected ? 'Hide Details' : 'View Application'}
+                        {isSelected ? 'Hide Details' : 'Review Candidate'}
                       </Button>
 
-                      {/* Stage Dropdown */}
+                      {/* Status Control Dropdown */}
                       <div className="relative">
                         <select
                           value={app.status}
-                          disabled={isUpdating}
+                          disabled={isUpdating || app.status === 'withdrawn' || app.status === 'cancelled'}
                           onChange={(e) => handleStatusChange(app._id, e.target.value)}
                           className="text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-700 font-medium cursor-pointer focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 disabled:opacity-50"
                         >
@@ -263,49 +414,159 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
                               Stage: {opt.label}
                             </option>
                           ))}
+                          {(app.status === 'withdrawn' || app.status === 'cancelled') && (
+                            <option value={app.status} disabled>
+                              Stage: {app.status === 'withdrawn' ? 'Withdrawn' : 'Cancelled'}
+                            </option>
+                          )}
                         </select>
                       </div>
                     </div>
                   </div>
 
-                  {/* Expanded Application Detail View (Resume Snapshot & Cover Letter) */}
+                  {/* Expanded Candidate Details View */}
                   {isSelected && (
-                    <div className="mt-4 pt-4 border-t border-slate-200/80 space-y-3 bg-slate-50/70 p-3.5 rounded-lg text-xs">
-                      {/* Resume snapshot info */}
-                      <div className="space-y-1">
-                        <div className="font-semibold text-slate-800">
-                          Verified Resume Snapshot:
+                    <div className="mt-4 pt-4 border-t border-slate-200 space-y-4 bg-slate-50/70 p-4 rounded-xl text-xs">
+                      {/* 1. Resume Snapshot Information */}
+                      <div className="space-y-1.5">
+                        <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Verified Resume Snapshot:</span>
                         </div>
-                        <div className="p-2.5 rounded-md bg-white border border-slate-200 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <FileText className="w-4 h-4 text-blue-600 shrink-0" />
-                            <span className="font-semibold text-slate-900">
-                              {app.resume?.filename || 'Resume_Snapshot.pdf'}
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              ({app.resume?.mimeType || 'PDF'})
-                            </span>
+                        <div className="p-3 rounded-lg bg-white border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900">
+                                {app.resume?.filename || 'Resume_Snapshot.pdf'}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                Format: {app.resume?.mimeType || 'PDF'} • Stored securely
+                              </div>
+                            </div>
                           </div>
-                          <span className="text-[11px] text-slate-500">
-                            Immutable snapshot saved at submission
-                          </span>
+
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span>Submitted: {formatDate(app.resume?.uploadedAt || app.createdAt)}</span>
+                          </div>
                         </div>
                       </div>
 
-                      {/* Cover letter */}
-                      <div className="space-y-1">
-                        <div className="font-semibold text-slate-800">
-                          Candidate Cover Letter:
-                        </div>
+                      {/* 2. Cover Letter */}
+                      <div className="space-y-1.5">
+                        <div className="font-semibold text-slate-800">Candidate Cover Letter:</div>
                         {app.coverLetter ? (
-                          <div className="p-3 rounded-md bg-white border border-slate-200 text-slate-700 whitespace-pre-wrap max-h-36 overflow-y-auto">
+                          <div className="p-3.5 rounded-lg bg-white border border-slate-200 text-slate-700 whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed">
                             {app.coverLetter}
                           </div>
                         ) : (
-                          <div className="p-2.5 rounded-md bg-white border border-dashed border-slate-200 text-slate-400 italic">
-                            No cover letter was included by candidate.
+                          <div className="p-3 rounded-lg bg-white border border-dashed border-slate-200 text-slate-400 italic">
+                            No cover letter was included with this application.
                           </div>
                         )}
+                      </div>
+
+                      {/* 3. Status History Timeline */}
+                      <div className="space-y-2">
+                        <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                          <History className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Status Transition History ({historyCount}):</span>
+                        </div>
+                        {app.statusHistory && app.statusHistory.length > 0 ? (
+                          <div className="p-3 rounded-lg bg-white border border-slate-200 divide-y divide-slate-100 max-h-44 overflow-y-auto">
+                            {app.statusHistory.map((hist, idx) => (
+                              <div key={idx} className="py-2 first:pt-0 last:pb-0 flex items-start justify-between gap-2">
+                                <div className="space-y-0.5">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant={formatApplicationStatus(hist.status).variant} size="sm">
+                                      {hist.status}
+                                    </Badge>
+                                    <span className="font-medium text-slate-700">
+                                      by {hist.changedByName || hist.changedByRole || 'System'}
+                                    </span>
+                                  </div>
+                                  {hist.note && (
+                                    <p className="text-[11px] text-slate-500 italic pl-0.5">
+                                      "{hist.note}"
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                                  {new Date(hist.changedAt).toLocaleString()}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-2.5 rounded-lg bg-white border border-dashed border-slate-200 text-slate-400 italic">
+                            Initial submission recorded.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* 4. Private Internal Recruiter Notes */}
+                      <div className="space-y-2 p-3.5 rounded-lg bg-amber-50/40 border border-amber-200/80">
+                        <div className="flex items-center justify-between">
+                          <div className="font-semibold text-amber-900 flex items-center gap-1.5">
+                            <Lock className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Private Internal Notes ({notesCount})</span>
+                          </div>
+                          <span className="text-[10px] text-amber-700 font-medium">
+                            Strictly hidden from candidates
+                          </span>
+                        </div>
+
+                        {/* List of existing notes */}
+                        {notesCount > 0 ? (
+                          <div className="space-y-2 max-h-48 overflow-y-auto">
+                            {app.notes.map((note, idx) => (
+                              <div
+                                key={note._id || idx}
+                                className="p-2.5 rounded-lg bg-white border border-amber-100 text-slate-700 space-y-1 shadow-2xs"
+                              >
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="font-bold text-slate-900">
+                                    {note.authorName || 'Recruiter'}
+                                  </span>
+                                  <span className="text-slate-400">
+                                    {new Date(note.createdAt).toLocaleString()}
+                                  </span>
+                                </div>
+                                <p className="text-slate-600 whitespace-pre-wrap">{note.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-500 italic">
+                            No internal notes added yet. Use the field below to document interviewer feedback or internal ratings.
+                          </p>
+                        )}
+
+                        {/* Add note input form */}
+                        <div className="pt-2 space-y-2">
+                          <textarea
+                            rows={2}
+                            placeholder="Add a private note about this applicant (e.g., strong system design skills, follow up on references)..."
+                            value={newNoteText}
+                            onChange={(e) => setNewNoteText(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg border border-slate-300 bg-white focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 text-slate-800 resize-none"
+                          />
+                          <div className="flex justify-end">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleAddNote(app._id)}
+                              isLoading={isAddingNote}
+                              disabled={!newNoteText.trim()}
+                              leftIcon={<Plus className="w-3.5 h-3.5" />}
+                            >
+                              Add Private Note
+                            </Button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}

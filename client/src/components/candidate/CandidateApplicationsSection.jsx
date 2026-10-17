@@ -34,6 +34,7 @@ import {
   Download,
   AlertTriangle,
   RefreshCw,
+  History,
 } from 'lucide-react';
 
 const STATUS_TABS = [
@@ -611,6 +612,40 @@ export default function CandidateApplicationsSection({ onStatsLoaded }) {
                 Submitted on {new Date(detailsApplication.createdAt).toLocaleString()}
               </div>
             </div>
+
+            {/* Status Transition History Timeline */}
+            {detailsApplication.statusHistory && detailsApplication.statusHistory.length > 0 && (
+              <div className="space-y-2">
+                <div className="font-semibold text-slate-800 flex items-center gap-1.5 text-xs">
+                  <History className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Status History Timeline:</span>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 divide-y divide-slate-200/70 max-h-36 overflow-y-auto text-xs">
+                  {detailsApplication.statusHistory.map((hist, idx) => (
+                    <div key={idx} className="py-2 first:pt-0 last:pb-0 flex items-start justify-between gap-2">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant={formatApplicationStatus(hist.status).variant} size="sm">
+                            {hist.status}
+                          </Badge>
+                          <span className="font-medium text-slate-700">
+                            {hist.changedByRole === 'candidate' ? 'You' : 'Hiring Team'}
+                          </span>
+                        </div>
+                        {hist.note && (
+                          <p className="text-[11px] text-slate-500 italic pl-0.5">
+                            "{hist.note}"
+                          </p>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 whitespace-nowrap">
+                        {new Date(hist.changedAt).toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Submitted Resume Snapshot */}
             <div className="space-y-1.5">

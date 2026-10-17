@@ -1,4 +1,7 @@
-import Application, { APPLICATION_STATUS } from '../models/application.model.js';
+import Application, {
+  APPLICATION_STATUS,
+  ALLOWED_APPLICATION_STATUS_TRANSITIONS,
+} from '../models/application.model.js';
 import Job, { JOB_STATUS } from '../models/job.model.js';
 import User, { USER_ROLES } from '../models/user.model.js';
 import {
@@ -12,7 +15,7 @@ import {
 /**
  * Service to process a new job application submission.
  * Enforces candidate role, job eligibility, required valid resume snapshot,
- * and handles both sequential and concurrent duplicate submissions safely.
+ * initializes statusHistory, and handles duplicate submissions safely.
  */
 export const createApplication = async ({ jobId, candidateUser, applicationData = {} }) => {
   // 1. Enforce candidate role
@@ -91,7 +94,18 @@ export const createApplication = async ({ jobId, candidateUser, applicationData 
     uploadedAt: candidateResume.uploadedAt || new Date(),
   };
 
-  // 7. Instantiate application with default pending status and timestamps
+  // 7. Instantiate application with initial status and statusHistory entry
+  const initialHistory = [
+    {
+      status: APPLICATION_STATUS.PENDING,
+      changedBy: candidate._id,
+      changedByName: candidate.name,
+      changedByRole: candidate.role,
+      changedAt: new Date(),
+      note: 'Application submitted',
+    },
+  ];
+
   const application = new Application({
     candidate: candidate._id,
     job: job._id,
@@ -101,6 +115,8 @@ export const createApplication = async ({ jobId, candidateUser, applicationData 
         ? applicationData.coverLetter.trim()
         : '',
     status: APPLICATION_STATUS.PENDING,
+    statusHistory: initialHistory,
+    notes: [],
   });
 
   // 8. Persist to DB with race-condition safety (compound unique index triggers code 11000)
@@ -130,14 +146,15 @@ export const createApplication = async ({ jobId, candidateUser, applicationData 
 
 /**
  * Retrieve all applications for a specific job (Recruiter owner or Admin)
+ * Supports status filtering and search query
  */
-export const getApplicationsForJob = async (jobId, requestingUser) => {
+export const getApplicationsForJob = async (jobId, requestingUser, query = {}) => {
   const job = await Job.findById(jobId);
   if (!job) {
     throw new NotFoundError('Job listing not found.');
   }
 
-  // Owner check
+  // Strict owner check
   const isOwner = job.recruiter.toString() === requestingUser._id.toString();
   const isAdmin = requestingUser.role === USER_ROLES.ADMIN;
 
@@ -145,7 +162,24 @@ export const getApplicationsForJob = async (jobId, requestingUser) => {
     throw new ForbiddenError('You can only view applications for your own job listings.');
   }
 
-  const applications = await Application.find({ job: jobId })
+  const filter = { job: jobId };
+
+  // Status filtering
+  if (query.status && query.status !== 'all') {
+    filter.status = query.status.toLowerCase();
+  }
+
+  // Search by candidate name or email
+  if (query.search && query.search.trim()) {
+    const searchRegex = new RegExp(query.search.trim(), 'i');
+    const matchedCandidates = await User.find({
+      $or: [{ name: searchRegex }, { email: searchRegex }],
+    }).select('_id');
+    const candidateIds = matchedCandidates.map((c) => c._id);
+    filter.candidate = { $in: candidateIds };
+  }
+
+  const applications = await Application.find(filter)
     .populate('candidate', 'name email phone location skills')
     .sort({ createdAt: -1 });
 
@@ -155,6 +189,7 @@ export const getApplicationsForJob = async (jobId, requestingUser) => {
 /**
  * Retrieve applications submitted by the authenticated candidate with pagination,
  * status filtering, and server-side summary aggregation.
+ * CRITICAL PRIVACY: Strips private recruiter internal notes completely.
  */
 export const getCandidateApplications = async (candidateId, query = {}) => {
   const page = Math.max(1, parseInt(query.page, 10) || 1);
@@ -167,9 +202,10 @@ export const getCandidateApplications = async (candidateId, query = {}) => {
     filter.status = query.status.toLowerCase();
   }
 
-  // 1. Fetch filtered and paginated applications
+  // 1. Fetch filtered and paginated applications, explicitly excluding internal notes
   const [applications, totalFiltered, statusAggregations] = await Promise.all([
     Application.find(filter)
+      .select('-notes')
       .populate('job', 'title company location jobType workMode status salary applicationDeadline recruiter')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -221,8 +257,9 @@ export const getCandidateApplications = async (candidateId, query = {}) => {
 };
 
 /**
- * Retrieve a single application by ID with strict access control
- * (Applicant, Recruiter owner, or Admin only)
+ * Retrieve a single application by ID with strict access control.
+ * Applicant can view statusHistory, but private recruiter internal notes are hidden.
+ * Recruiter owner or Admin can view both statusHistory and internal notes.
  */
 export const getApplicationById = async (applicationId, requestingUser) => {
   const application = await Application.findById(applicationId)
@@ -243,14 +280,22 @@ export const getApplicationById = async (applicationId, requestingUser) => {
     throw new ForbiddenError('You are not authorized to view this application.');
   }
 
+  // If candidate is viewing, sanitize and remove private internal notes
+  if (isApplicant && !isJobRecruiter && !isAdmin) {
+    const appObject = application.toObject();
+    delete appObject.notes;
+    return appObject;
+  }
+
   return application;
 };
 
 /**
  * Cancel / withdraw an application when permitted by business rules.
  * Permitted only by the applicant when application is in 'pending' or 'reviewing' state.
+ * Appends cancellation event to statusHistory with candidate actor and timestamp.
  */
-export const cancelApplication = async (applicationId, candidateUser) => {
+export const cancelApplication = async (applicationId, candidateUser, cancelReason = '') => {
   const application = await Application.findById(applicationId).populate(
     'job',
     'title company'
@@ -278,23 +323,36 @@ export const cancelApplication = async (applicationId, candidateUser) => {
   }
 
   application.status = APPLICATION_STATUS.WITHDRAWN;
+
+  // Append to status history
+  application.statusHistory.push({
+    status: APPLICATION_STATUS.WITHDRAWN,
+    changedBy: candidateUser._id,
+    changedByName: candidateUser.name || 'Candidate',
+    changedByRole: candidateUser.role || 'candidate',
+    changedAt: new Date(),
+    note: cancelReason || 'Application withdrawn by candidate',
+  });
+
   await application.save();
 
-  return application;
+  // Strip notes before returning to candidate
+  const appObject = application.toObject();
+  delete appObject.notes;
+  return appObject;
 };
 
 /**
- * Update candidate application status (by Job owner Recruiter or Admin)
+ * Update candidate application status (by Job owner Recruiter or Admin).
+ * Enforces allowed status transitions and records the actor, timestamp and optional note in statusHistory.
  */
-export const updateApplicationStatus = async (applicationId, newStatus, requestingUser) => {
-  const allowedStatuses = [
-    APPLICATION_STATUS.PENDING,
-    APPLICATION_STATUS.REVIEWING,
-    APPLICATION_STATUS.SHORTLISTED,
-    APPLICATION_STATUS.INTERVIEWING,
-    APPLICATION_STATUS.ACCEPTED,
-    APPLICATION_STATUS.REJECTED,
-  ];
+export const updateApplicationStatus = async (
+  applicationId,
+  newStatus,
+  requestingUser,
+  statusNote = ''
+) => {
+  const allowedStatuses = Object.values(APPLICATION_STATUS);
 
   if (!allowedStatuses.includes(newStatus)) {
     throw new BadRequestError(
@@ -318,7 +376,80 @@ export const updateApplicationStatus = async (applicationId, newStatus, requesti
     );
   }
 
+  const currentStatus = application.status;
+
+  // Check allowed status transitions
+  if (currentStatus !== newStatus) {
+    const validNextStatuses = ALLOWED_APPLICATION_STATUS_TRANSITIONS[currentStatus] || [];
+    if (!validNextStatuses.includes(newStatus)) {
+      throw new BadRequestError(
+        `Cannot transition application status from '${currentStatus}' to '${newStatus}'. ` +
+          (validNextStatuses.length > 0
+            ? `Allowed next statuses: ${validNextStatuses.join(', ')}`
+            : `Status '${currentStatus}' is terminal and cannot be changed.`)
+      );
+    }
+  }
+
   application.status = newStatus;
+
+  // Track status change in statusHistory with authorized actor and timestamp
+  application.statusHistory.push({
+    status: newStatus,
+    changedBy: requestingUser._id,
+    changedByName: requestingUser.name || 'Recruiter',
+    changedByRole: requestingUser.role || 'recruiter',
+    changedAt: new Date(),
+    note: statusNote || `Status changed from ${currentStatus} to ${newStatus}`,
+  });
+
+  await application.save();
+
+  await application.populate([
+    { path: 'candidate', select: 'name email phone location skills' },
+    { path: 'job', select: 'title company location status' },
+  ]);
+
+  return application;
+};
+
+/**
+ * Add private internal note to an application (by Job owner Recruiter or Admin).
+ * Strictly hidden from candidates and unrelated recruiters.
+ */
+export const addApplicationNote = async (applicationId, noteText, requestingUser) => {
+  if (!noteText || typeof noteText !== 'string' || !noteText.trim()) {
+    throw new BadRequestError('Note content is required.');
+  }
+
+  const trimmedText = noteText.trim();
+  if (trimmedText.length > 3000) {
+    throw new BadRequestError('Note content cannot exceed 3000 characters.');
+  }
+
+  const application = await Application.findById(applicationId).populate('job');
+  if (!application) {
+    throw new NotFoundError('Application record not found.');
+  }
+
+  const isOwner =
+    application.job?.recruiter &&
+    application.job.recruiter.toString() === requestingUser._id.toString();
+  const isAdmin = requestingUser.role === USER_ROLES.ADMIN;
+
+  if (!isOwner && !isAdmin) {
+    throw new ForbiddenError(
+      'You are not authorized to add notes to applications for another recruiter’s job listing.'
+    );
+  }
+
+  application.notes.push({
+    author: requestingUser._id,
+    authorName: requestingUser.name || 'Recruiter',
+    text: trimmedText,
+    createdAt: new Date(),
+  });
+
   await application.save();
 
   await application.populate([
@@ -351,5 +482,7 @@ export default {
   getApplicationById,
   cancelApplication,
   updateApplicationStatus,
+  addApplicationNote,
   getApplicationStatusForJob,
 };
+

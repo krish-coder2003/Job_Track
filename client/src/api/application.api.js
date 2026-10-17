@@ -17,9 +17,10 @@ export const applyToJobApi = async (jobId, data = {}) => {
  * GET /api/jobs/:jobId/applications
  *
  * @param {string} jobId - Target job ObjectId
+ * @param {Object} params - Optional filters (status, search, sortBy, order)
  */
-export const getJobApplicationsApi = async (jobId) => {
-  const response = await api.get(`/jobs/${jobId}/applications`);
+export const getJobApplicationsApi = async (jobId, params = {}) => {
+  const response = await api.get(`/jobs/${jobId}/applications`, { params });
   return response.data;
 };
 
@@ -61,9 +62,12 @@ export const getApplicationByIdApi = async (id) => {
  * PATCH /api/applications/:id/cancel
  *
  * @param {string} id - Application ObjectId
+ * @param {string} [reason] - Optional cancellation reason
  */
-export const cancelApplicationApi = async (id) => {
-  const response = await api.patch(`/applications/${id}/cancel`);
+export const cancelApplicationApi = async (id, reason = '') => {
+  const response = await api.patch(`/applications/${id}/cancel`, {
+    ...(reason ? { reason } : {}),
+  });
   return response.data;
 };
 
@@ -72,10 +76,26 @@ export const cancelApplicationApi = async (id) => {
  * PATCH /api/applications/:id/status
  *
  * @param {string} id - Application ObjectId
- * @param {string} status - New application status (reviewing, shortlisted, interviewing, accepted, rejected)
+ * @param {string} status - New application status
+ * @param {string} [note] - Optional status change note
  */
-export const updateApplicationStatusApi = async (id, status) => {
-  const response = await api.patch(`/applications/${id}/status`, { status });
+export const updateApplicationStatusApi = async (id, status, note = '') => {
+  const response = await api.patch(`/applications/${id}/status`, {
+    status,
+    ...(note ? { note } : {}),
+  });
+  return response.data;
+};
+
+/**
+ * Add private internal note to an application (Recruiter owner or Admin only)
+ * PATCH /api/applications/:id/notes
+ *
+ * @param {string} id - Application ObjectId
+ * @param {string} note - Note content text
+ */
+export const addApplicationNoteApi = async (id, note) => {
+  const response = await api.patch(`/applications/${id}/notes`, { note });
   return response.data;
 };
 
@@ -87,4 +107,6 @@ export default {
   getApplicationByIdApi,
   cancelApplicationApi,
   updateApplicationStatusApi,
+  addApplicationNoteApi,
 };
+

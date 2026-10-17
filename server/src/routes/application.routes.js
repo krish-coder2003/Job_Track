@@ -4,6 +4,7 @@ import {
   getApplicationById,
   cancelApplication,
   updateApplicationStatus,
+  addApplicationNote,
 } from '../controllers/application.controller.js';
 import {
   authenticate,
@@ -78,4 +79,18 @@ router.patch(
   updateApplicationStatus
 );
 
+/**
+ * @route   PATCH /api/applications/:id/notes
+ * @desc    Add private internal recruiter note to application
+ * @access  Private (Job owner Recruiter or Admin only)
+ */
+router.patch(
+  '/:id/notes',
+  authenticate,
+  requireActiveAccount,
+  authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
+  addApplicationNote
+);
+
 export default router;
+

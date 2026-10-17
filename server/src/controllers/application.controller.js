@@ -26,13 +26,14 @@ export const applyToJob = async (req, res, next) => {
 
 /**
  * Controller to handle GET /api/jobs/:id/applications
- * Owner recruiter or admin views applications for a job listing
+ * Owner recruiter or admin views applications for a job listing (with optional filter & search)
  */
 export const getJobApplications = async (req, res, next) => {
   try {
     const applications = await applicationService.getApplicationsForJob(
       req.params.id,
-      req.user
+      req.user,
+      req.query
     );
 
     res.status(200).json({
@@ -103,9 +104,11 @@ export const getApplicationById = async (req, res, next) => {
  */
 export const cancelApplication = async (req, res, next) => {
   try {
+    const reason = req.body?.reason || req.body?.note;
     const application = await applicationService.cancelApplication(
       req.params.id,
-      req.user
+      req.user,
+      reason
     );
 
     res.status(200).json({
@@ -146,7 +149,7 @@ export const getApplicationStatus = async (req, res, next) => {
  */
 export const updateApplicationStatus = async (req, res, next) => {
   try {
-    const { status } = req.body;
+    const { status, note } = req.body;
     if (!status) {
       return res.status(400).json({
         success: false,
@@ -157,12 +160,45 @@ export const updateApplicationStatus = async (req, res, next) => {
     const application = await applicationService.updateApplicationStatus(
       req.params.id,
       status,
-      req.user
+      req.user,
+      note
     );
 
     res.status(200).json({
       success: true,
       message: `Application status updated to ${status}.`,
+      data: {
+        application,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Controller to handle PATCH /api/applications/:id/notes
+ * Recruiter adds a private internal note to an application
+ */
+export const addApplicationNote = async (req, res, next) => {
+  try {
+    const noteText = req.body?.note || req.body?.text;
+    if (!noteText || typeof noteText !== 'string' || !noteText.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Note content is required.',
+      });
+    }
+
+    const application = await applicationService.addApplicationNote(
+      req.params.id,
+      noteText,
+      req.user
+    );
+
+    res.status(200).json({
+      success: true,
+      message: 'Internal note added successfully.',
       data: {
         application,
       },
@@ -179,5 +215,7 @@ export default {
   getApplicationById,
   cancelApplication,
   updateApplicationStatus,
+  addApplicationNote,
   getApplicationStatus,
 };
+
