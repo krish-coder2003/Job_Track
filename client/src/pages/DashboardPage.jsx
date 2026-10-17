@@ -1,8 +1,11 @@
+import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../components/common/Card';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { useAuth } from '../context/AuthContext';
+import CandidateProfileSection from '../components/candidate/CandidateProfileSection';
+import CandidateApplicationsSection from '../components/candidate/CandidateApplicationsSection';
 import {
   Briefcase,
   Users,
@@ -13,8 +16,6 @@ import {
   MoreVertical,
   CheckCircle2,
   Clock,
-  Send,
-  FileCheck,
 } from 'lucide-react';
 
 const RECRUITER_STATS = [
@@ -47,41 +48,6 @@ const RECRUITER_STATS = [
     value: '84%',
     change: '+5.4% improvement',
     icon: TrendingUp,
-    color: 'text-amber-600',
-    bg: 'bg-amber-50',
-  },
-];
-
-const CANDIDATE_STATS = [
-  {
-    title: 'Applications Submitted',
-    value: '6',
-    change: '2 under active review',
-    icon: Send,
-    color: 'text-blue-600',
-    bg: 'bg-blue-50',
-  },
-  {
-    title: 'Interviews Scheduled',
-    value: '2',
-    change: 'Next tomorrow at 10 AM',
-    icon: CalendarCheck,
-    color: 'text-emerald-600',
-    bg: 'bg-emerald-50',
-  },
-  {
-    title: 'Profile Searches',
-    value: '42',
-    change: '+12 recruiters this week',
-    icon: Users,
-    color: 'text-indigo-600',
-    bg: 'bg-indigo-50',
-  },
-  {
-    title: 'Match Rating',
-    value: '94%',
-    change: 'Strong profile completeness',
-    icon: FileCheck,
     color: 'text-amber-600',
     bg: 'bg-amber-50',
   },
@@ -126,42 +92,10 @@ const RECRUITER_CANDIDATES = [
   },
 ];
 
-const CANDIDATE_APPLICATIONS = [
-  {
-    id: 101,
-    company: 'Stripe Technologies',
-    role: 'Senior Staff Frontend Architect',
-    appliedDate: 'Oct 14, 2026',
-    stage: 'Technical Interview',
-    stageVariant: 'warning',
-    location: 'San Francisco (Remote)',
-  },
-  {
-    id: 102,
-    company: 'Vercel Cloud Inc.',
-    role: 'Platform Engineer (React/Node)',
-    appliedDate: 'Oct 11, 2026',
-    stage: 'Under Recruiter Review',
-    stageVariant: 'blue',
-    location: 'New York (Hybrid)',
-  },
-  {
-    id: 103,
-    company: 'Linear Software',
-    role: 'Lead Full-Stack Engineer',
-    appliedDate: 'Oct 08, 2026',
-    stage: 'Application Received',
-    stageVariant: 'gray',
-    location: 'Remote',
-  },
-];
-
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const isRecruiter = user?.role === 'recruiter';
   const isAdmin = user?.role === 'admin';
-
-  const stats = isRecruiter || isAdmin ? RECRUITER_STATS : CANDIDATE_STATS;
 
   return (
     <DashboardLayout>
@@ -197,42 +131,57 @@ export default function DashboardPage() {
                 </Button>
               </>
             ) : (
-              <Button variant="primary" size="sm" leftIcon={<Briefcase className="w-4 h-4" />}>
-                Browse Open Roles
-              </Button>
+              <Link to="/jobs">
+                <Button variant="primary" size="sm" leftIcon={<Briefcase className="w-4 h-4" />}>
+                  Browse Open Roles
+                </Button>
+              </Link>
             )}
           </div>
         </div>
 
-        {/* 4 Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.title} variant="default" className="hover:shadow-md transition-shadow">
-                <CardContent className="p-5 flex items-start justify-between">
-                  <div className="space-y-2">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                      {stat.title}
-                    </p>
-                    <p className="text-2xl font-black text-slate-900">{stat.value}</p>
-                    <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                      <ArrowUpRight className="w-3.5 h-3.5" />
-                      <span>{stat.change}</span>
-                    </p>
-                  </div>
+        {/* Recruiter / Admin Stat Cards */}
+        {(isRecruiter || isAdmin) && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {RECRUITER_STATS.map((stat) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={stat.title} variant="default" className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-5 flex items-start justify-between">
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                        {stat.title}
+                      </p>
+                      <p className="text-2xl font-black text-slate-900">{stat.value}</p>
+                      <p className="text-xs text-emerald-600 font-medium flex items-center gap-1">
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                        <span>{stat.change}</span>
+                      </p>
+                    </div>
 
-                  <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shrink-0`}>
-                    <Icon className="w-5 h-5" />
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <div className={`w-10 h-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center shrink-0`}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Activity Table: Recruiter vs Candidate */}
-        {isRecruiter || isAdmin ? (
+        {/* Candidate View: Real Backend Applications Management & Profile */}
+        {!isRecruiter && !isAdmin && (
+          <>
+            {/* Real Applications Section with Summary, Status Filter, Table, Modal & Cancel */}
+            <CandidateApplicationsSection />
+
+            {/* Candidate Profile & Resume Section */}
+            <CandidateProfileSection user={user} onProfileUpdated={refreshUser} />
+          </>
+        )}
+
+        {/* Recruiter / Admin Activity Table */}
+        {(isRecruiter || isAdmin) && (
           <Card variant="default">
             <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -283,66 +232,6 @@ export default function DashboardPage() {
                             type="button"
                             className="p-1 text-slate-400 hover:text-slate-700 rounded-md cursor-pointer"
                             aria-label="Candidate options"
-                          >
-                            <MoreVertical className="w-4 h-4 ml-auto" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card variant="default">
-            <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <CardTitle>My Submitted Applications</CardTitle>
-                <CardDescription>
-                  Real-time status updates on roles you have applied for
-                </CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" className="mt-2 sm:mt-0 text-blue-600">
-                View All Applications
-              </Button>
-            </CardHeader>
-
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-y border-slate-100 bg-slate-50/75 text-slate-500 font-semibold uppercase tracking-wider">
-                      <th className="py-3 px-6">Company</th>
-                      <th className="py-3 px-6">Role</th>
-                      <th className="py-3 px-6">Location</th>
-                      <th className="py-3 px-6">Applied Date</th>
-                      <th className="py-3 px-6">Application Status</th>
-                      <th className="py-3 px-6 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {CANDIDATE_APPLICATIONS.map((app) => (
-                      <tr key={app.id} className="hover:bg-slate-50/60 transition-colors">
-                        <td className="py-4 px-6 font-semibold text-slate-900 flex items-center space-x-3">
-                          <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 text-blue-700 font-bold flex items-center justify-center text-[11px]">
-                            {app.company.charAt(0)}
-                          </div>
-                          <span>{app.company}</span>
-                        </td>
-                        <td className="py-4 px-6 font-medium text-slate-800">{app.role}</td>
-                        <td className="py-4 px-6 text-slate-500">{app.location}</td>
-                        <td className="py-4 px-6 text-slate-500">{app.appliedDate}</td>
-                        <td className="py-4 px-6">
-                          <Badge variant={app.stageVariant} dot size="sm">
-                            {app.stage}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-6 text-right">
-                          <button
-                            type="button"
-                            className="p-1 text-slate-400 hover:text-slate-700 rounded-md cursor-pointer"
-                            aria-label="Application options"
                           >
                             <MoreVertical className="w-4 h-4 ml-auto" />
                           </button>

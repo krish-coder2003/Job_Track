@@ -11,7 +11,8 @@ export const Input = forwardRef(function Input(
     helperText,
     icon: iconProp,
     leftIcon: leftIconProp,
-    rightElement,
+    rightElement: rightElementProp,
+    rightIcon: rightIconProp,
     disabled = false,
     required = false,
     className = '',
@@ -21,6 +22,7 @@ export const Input = forwardRef(function Input(
   ref
 ) {
   const LeftIcon = iconProp || leftIconProp;
+  const RightElement = rightElementProp || rightIconProp;
   const inputId = id || name || `input-${Math.random().toString(36).slice(2, 8)}`;
   const errorId = error ? `${inputId}-error` : undefined;
   const helperId = helperText ? `${inputId}-helper` : undefined;
@@ -58,7 +60,7 @@ export const Input = forwardRef(function Input(
           aria-describedby={describedBy}
           className={`w-full bg-white text-slate-900 placeholder-slate-400 border rounded-lg text-sm px-3.5 py-2.5 transition-all focus:outline-none focus:ring-2 disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
             LeftIcon ? 'pl-10' : ''
-          } ${rightElement || error ? 'pr-10' : ''} ${
+          } ${RightElement && error ? 'pr-16' : RightElement || error ? 'pr-10' : ''} ${
             error
               ? 'border-rose-400 focus:border-rose-500 focus:ring-rose-500/20'
               : 'border-slate-300 hover:border-slate-400 focus:border-blue-600 focus:ring-blue-500/20'
@@ -66,13 +68,16 @@ export const Input = forwardRef(function Input(
           {...props}
         />
 
-        {error ? (
-          <div className="absolute right-3 pointer-events-none text-rose-500 flex items-center">
-            <AlertCircle className="w-4 h-4" />
-          </div>
-        ) : (
-          rightElement && <div className="absolute right-3 flex items-center">{rightElement}</div>
-        )}
+        <div className="absolute right-3 flex items-center gap-1.5">
+          {error && (
+            <span className="pointer-events-none text-rose-500 flex items-center">
+              <AlertCircle className="w-4 h-4" />
+            </span>
+          )}
+          {RightElement && (
+            <span className="flex items-center">{RightElement}</span>
+          )}
+        </div>
       </div>
 
       {error ? (

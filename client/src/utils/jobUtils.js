@@ -115,3 +115,54 @@ export const formatDate = (dateString) => {
     year: 'numeric',
   });
 };
+
+/**
+ * Format application lifecycle status with label, badge color variant, and description
+ */
+export const formatApplicationStatus = (status) => {
+  if (!status) return { label: 'Pending', variant: 'warning', description: 'Pending recruiter review' };
+  const map = {
+    pending: {
+      label: 'Submitted',
+      variant: 'warning',
+      description: 'Your application has been received and is waiting for recruiter review.',
+    },
+    reviewing: {
+      label: 'In Review',
+      variant: 'blue',
+      description: 'The recruiter is actively evaluating your qualifications and resume snapshot.',
+    },
+    shortlisted: {
+      label: 'Shortlisted',
+      variant: 'navy',
+      description: 'Congratulations! Your profile has been shortlisted for this role.',
+    },
+    interviewing: {
+      label: 'Interviewing',
+      variant: 'warning',
+      description: 'You are currently in the interview round with the hiring team.',
+    },
+    accepted: {
+      label: 'Accepted',
+      variant: 'success',
+      description: 'Offer extended or candidate accepted for this position.',
+    },
+    rejected: {
+      label: 'Not Selected',
+      variant: 'danger',
+      description: 'The recruiter has decided not to move forward with your application.',
+    },
+    withdrawn: {
+      label: 'Withdrawn',
+      variant: 'gray',
+      description: 'You have withdrawn your application for this position.',
+    },
+    cancelled: {
+      label: 'Withdrawn',
+      variant: 'gray',
+      description: 'You have withdrawn your application for this position.',
+    },
+  };
+  return map[status.toLowerCase()] || { label: status, variant: 'gray', description: '' };
+};
+

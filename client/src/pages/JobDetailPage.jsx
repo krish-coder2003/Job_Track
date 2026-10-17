@@ -11,6 +11,7 @@ import { Skeleton } from '../components/common/LoadingIndicator';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/common/Toast';
 import { getJobByIdApi } from '../api/job.api';
+import { applyToJobApi, getApplicationStatusApi } from '../api/application.api';
 import {
   formatSalary,
   formatJobType,
@@ -49,6 +50,7 @@ export default function JobDetailPage() {
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
+  const [coverLetter, setCoverLetter] = useState('');
 
   const fetchJob = useCallback(async () => {
     setIsLoading(true);
@@ -73,6 +75,19 @@ export default function JobDetailPage() {
     fetchJob();
   }, [fetchJob]);
 
+  // Check whether the authenticated candidate has already applied to this position
+  useEffect(() => {
+    if (id && isAuthenticated && isCandidate) {
+      getApplicationStatusApi(id)
+        .then((res) => {
+          if (res.data?.hasApplied) {
+            setHasApplied(true);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [id, isAuthenticated, isCandidate]);
+
   const handleApplyClick = () => {
     if (!isAuthenticated) {
       toast.info('Please sign in or create an account to apply for this job.', 'Sign In Required');
@@ -88,17 +103,27 @@ export default function JobDetailPage() {
     setApplyModalOpen(true);
   };
 
-  const handleConfirmApplication = () => {
+  const handleConfirmApplication = async () => {
+    if (!job?._id) return;
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      await applyToJobApi(job._id, {
+        coverLetter: coverLetter.trim(),
+      });
       setApplyModalOpen(false);
       setHasApplied(true);
       toast.success(
         `Your application for ${job.title} has been submitted!`,
         'Application Sent'
       );
-    }, 1200);
+    } catch (err) {
+      toast.error(
+        err.message || 'Failed to submit application. Please try again.',
+        'Application Error'
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleShare = () => {
@@ -109,6 +134,10 @@ export default function JobDetailPage() {
   const formattedSalary = job ? formatSalary(job.salary) : null;
   const isOwner = user && job && job.recruiter && (job.recruiter._id === user._id || job.recruiter === user._id);
   const isActive = job?.status === 'active';
+  const hasResume = Boolean(
+    user?.resume?.hasResume === true ||
+    (user?.resume?.filename && (user?.resume?.storageKey || user?.resume?.url))
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between selection:bg-blue-600 selection:text-white">
@@ -439,6 +468,7 @@ export default function JobDetailPage() {
                 size="sm"
                 onClick={handleConfirmApplication}
                 isLoading={isSubmitting}
+                disabled={!hasResume || isSubmitting}
                 leftIcon={<Send className="w-3.5 h-3.5" />}
               >
                 Confirm Application
@@ -478,12 +508,43 @@ export default function JobDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-start space-x-2 text-[11px] text-slate-500">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              <span>
-                Your candidate profile and verified resume will be shared with the recruiter immediately.
-              </span>
+            <div className="space-y-1.5">
+              <label htmlFor="cover-letter-input" className="text-xs font-semibold text-slate-700 flex justify-between">
+                <span>Cover Letter <span className="text-slate-400 font-normal">(Optional)</span></span>
+                <span className="text-[10px] text-slate-400">{coverLetter.length}/5000</span>
+              </label>
+              <textarea
+                id="cover-letter-input"
+                rows={3}
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                placeholder="Share a brief introduction or note for the hiring team..."
+                className="w-full text-xs p-3 rounded-lg border border-slate-300 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 resize-none text-slate-800 placeholder-slate-400"
+                maxLength={5000}
+              />
             </div>
+
+            {!hasResume ? (
+              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-semibold">Resume Required</div>
+                  <div className="text-[11px] text-amber-700 mt-0.5">
+                    A valid uploaded resume is required before applying.{' '}
+                    <Link to="/dashboard" className="font-semibold underline text-amber-900 hover:text-amber-950">
+                      Go to Profile to Upload Resume
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start space-x-2 text-[11px] text-slate-500">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span>
+                  Your candidate profile and verified resume (<strong>{user?.resume?.filename || 'Uploaded Resume'}</strong>) will be securely shared with the recruiter immediately.
+                </span>
+              </div>
+            )}
           </div>
         </Modal>
       )}
