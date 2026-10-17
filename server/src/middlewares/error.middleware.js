@@ -22,14 +22,20 @@ export const errorHandler = (err, req, res, _next) => {
   // 2. MongoDB Duplicate Key Error (Code 11000)
   else if (err.code === 11000) {
     statusCode = 409;
-    const duplicatedField = Object.keys(err.keyPattern || err.keyValue || {})[0] || 'field';
-    message = `An account with this ${duplicatedField} already exists.`;
-    errors = [
-      {
-        field: duplicatedField,
-        message: `${duplicatedField} is already registered.`,
-      },
-    ];
+    const pattern = err.keyPattern || err.keyValue || {};
+    if (pattern.candidate !== undefined && pattern.job !== undefined) {
+      message = 'You have already applied for this job.';
+      errors = [{ field: 'application', message }];
+    } else {
+      const duplicatedField = Object.keys(pattern)[0] || 'field';
+      message = `An account or record with this ${duplicatedField} already exists.`;
+      errors = [
+        {
+          field: duplicatedField,
+          message: `${duplicatedField} already exists.`,
+        },
+      ];
+    }
   }
 
   // 3. Mongoose Cast Error (invalid ObjectId or type conversion)

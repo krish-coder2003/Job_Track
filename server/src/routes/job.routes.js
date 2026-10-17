@@ -8,6 +8,11 @@ import {
   updateJobStatus,
 } from '../controllers/job.controller.js';
 import {
+  applyToJob,
+  getJobApplications,
+  getApplicationStatus,
+} from '../controllers/application.controller.js';
+import {
   authenticate,
   optionalAuthenticate,
   requireActiveAccount,
@@ -20,6 +25,7 @@ import {
   validateJobStatus,
   validateListJobsQuery,
 } from '../validations/job.validation.js';
+import { validateApplyJob } from '../validations/application.validation.js';
 import { USER_ROLES } from '../models/user.model.js';
 
 const router = Router();
@@ -94,6 +100,47 @@ router.patch(
   checkJobOwnership,
   validateJobStatus,
   updateJobStatus
+);
+
+/**
+ * @route   POST /api/jobs/:id/applications
+ * @desc    Submit job application (Candidate only, active/approved jobs only)
+ * @access  Private (Candidate only)
+ */
+router.post(
+  '/:id/applications',
+  authenticate,
+  requireActiveAccount,
+  authorize(USER_ROLES.CANDIDATE),
+  validateApplyJob,
+  applyToJob
+);
+
+/**
+ * @route   GET /api/jobs/:id/applications
+ * @desc    Retrieve candidate applications for this job listing
+ * @access  Private (Job owner Recruiter or Admin only)
+ */
+router.get(
+  '/:id/applications',
+  authenticate,
+  requireActiveAccount,
+  authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
+  checkJobOwnership,
+  getJobApplications
+);
+
+/**
+ * @route   GET /api/jobs/:id/applications/status
+ * @desc    Check whether candidate has applied for this job listing
+ * @access  Private (Candidate only)
+ */
+router.get(
+  '/:id/applications/status',
+  authenticate,
+  requireActiveAccount,
+  authorize(USER_ROLES.CANDIDATE),
+  getApplicationStatus
 );
 
 export default router;
