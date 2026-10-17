@@ -18,6 +18,7 @@ import {
   validateCreateJob,
   validateUpdateJob,
   validateJobStatus,
+  validateListJobsQuery,
 } from '../validations/job.validation.js';
 import { USER_ROLES } from '../models/user.model.js';
 
@@ -28,7 +29,7 @@ const router = Router();
  * @desc    Get all active, approved jobs for public users (or recruiter's own with myJobs=true)
  * @access  Public
  */
-router.get('/', optionalAuthenticate, getJobs);
+router.get('/', optionalAuthenticate, validateListJobsQuery, getJobs);
 
 /**
  * @route   GET /api/jobs/:id

@@ -10,9 +10,15 @@ export const getJobs = async (req, res, next) => {
     res.status(200).json({
       success: true,
       count: result.jobs.length,
+      total: result.pagination.total,
+      totalPages: result.pagination.totalPages,
+      page: result.pagination.page,
+      limit: result.pagination.limit,
+      pageSize: result.pagination.pageSize,
       pagination: result.pagination,
       data: {
         jobs: result.jobs,
+        pagination: result.pagination,
       },
     });
   } catch (error) {

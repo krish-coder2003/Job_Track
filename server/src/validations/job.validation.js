@@ -6,6 +6,7 @@ import {
   EXPERIENCE_LEVELS,
   ALLOWED_STATUS_TRANSITIONS,
 } from '../models/job.model.js';
+import { MAX_PAGE_SIZE } from '../utils/query.utils.js';
 
 // Fields that cannot be mass assigned or overwritten by clients
 const PROTECTED_FIELDS = ['recruiter', '_id', 'id', 'isApproved', 'createdAt', 'updatedAt'];
@@ -256,8 +257,147 @@ export const validateJobStatus = (req, res, next) => {
   next();
 };
 
+/**
+ * Validates request query parameters for GET /api/jobs (Search, Filters, Pagination, Sorting)
+ */
+export const validateListJobsQuery = (req, res, next) => {
+  const errors = [];
+  const query = req.query || {};
+
+  // 1. Validate page number
+  if (query.page !== undefined && query.page !== '') {
+    const pageNum = Number(query.page);
+    if (!Number.isInteger(pageNum) || pageNum < 1) {
+      errors.push({
+        field: 'page',
+        message: 'Page number must be a positive integer greater than or equal to 1.',
+      });
+    }
+  }
+
+  // 2. Validate page size (limit / pageSize)
+  const rawLimit =
+    query.limit !== undefined && query.limit !== ''
+      ? query.limit
+      : query.pageSize !== undefined && query.pageSize !== ''
+      ? query.pageSize
+      : undefined;
+
+  if (rawLimit !== undefined) {
+    const limitNum = Number(rawLimit);
+    if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > MAX_PAGE_SIZE) {
+      errors.push({
+        field: 'limit',
+        message: `Page size must be a positive integer between 1 and ${MAX_PAGE_SIZE}.`,
+      });
+    }
+  }
+
+  // 3. Validate keyword search string length
+  const searchParam = query.search !== undefined ? query.search : query.q;
+  if (searchParam !== undefined) {
+    if (typeof searchParam !== 'string' || searchParam.length > 100) {
+      errors.push({
+        field: 'search',
+        message: 'Search query must be a string up to 100 characters.',
+      });
+    }
+  }
+
+  // 4. Validate location string length
+  if (query.location !== undefined) {
+    if (typeof query.location !== 'string' || query.location.length > 100) {
+      errors.push({
+        field: 'location',
+        message: 'Location filter must be a string up to 100 characters.',
+      });
+    }
+  }
+
+  // 5. Validate Job Type enum
+  if (query.jobType !== undefined && query.jobType !== '') {
+    const validJobTypes = Object.values(JOB_TYPES);
+    if (!validJobTypes.includes(query.jobType)) {
+      errors.push({
+        field: 'jobType',
+        message: `Invalid jobType '${query.jobType}'. Allowed values: ${validJobTypes.join(', ')}.`,
+      });
+    }
+  }
+
+  // 6. Validate Work Mode enum
+  if (query.workMode !== undefined && query.workMode !== '') {
+    const validWorkModes = Object.values(WORK_MODES);
+    if (!validWorkModes.includes(query.workMode)) {
+      errors.push({
+        field: 'workMode',
+        message: `Invalid workMode '${query.workMode}'. Allowed values: ${validWorkModes.join(', ')}.`,
+      });
+    }
+  }
+
+  // 7. Validate Experience Level enum
+  if (query.experienceLevel !== undefined && query.experienceLevel !== '') {
+    const validExpLevels = Object.values(EXPERIENCE_LEVELS);
+    if (!validExpLevels.includes(query.experienceLevel)) {
+      errors.push({
+        field: 'experienceLevel',
+        message: `Invalid experienceLevel '${query.experienceLevel}'. Allowed values: ${validExpLevels.join(', ')}.`,
+      });
+    }
+  }
+
+  // 8. Validate Sort By field
+  const ALLOWED_SORT_FIELDS = [
+    'createdAt',
+    'title',
+    'company',
+    'location',
+    'jobType',
+    'workMode',
+    'experienceLevel',
+  ];
+  if (query.sortBy !== undefined && query.sortBy !== '') {
+    if (!ALLOWED_SORT_FIELDS.includes(query.sortBy)) {
+      errors.push({
+        field: 'sortBy',
+        message: `Invalid sortBy field '${query.sortBy}'. Allowed values: ${ALLOWED_SORT_FIELDS.join(', ')}.`,
+      });
+    }
+  }
+
+  // 9. Validate Sort Order
+  if (query.order !== undefined && query.order !== '') {
+    const validOrders = ['asc', 'desc', '1', '-1'];
+    if (!validOrders.includes(String(query.order).toLowerCase())) {
+      errors.push({
+        field: 'order',
+        message: "Invalid sort order. Allowed values: 'asc', 'desc'.",
+      });
+    }
+  }
+
+  // 10. Validate Status (if provided for recruiter/admin views)
+  if (query.status !== undefined && query.status !== '') {
+    const validStatuses = Object.values(JOB_STATUS);
+    if (!validStatuses.includes(query.status)) {
+      errors.push({
+        field: 'status',
+        message: `Invalid status '${query.status}'. Allowed values: ${validStatuses.join(', ')}.`,
+      });
+    }
+  }
+
+  if (errors.length > 0) {
+    return next(new BadRequestError('Job discovery query validation failed.', errors));
+  }
+
+  next();
+};
+
 export default {
   validateCreateJob,
   validateUpdateJob,
   validateJobStatus,
+  validateListJobsQuery,
 };

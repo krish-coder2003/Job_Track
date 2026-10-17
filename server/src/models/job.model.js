@@ -191,6 +191,20 @@ const jobSchema = new mongoose.Schema(
 // Compound index for public listings query
 jobSchema.index({ status: 1, isApproved: 1, createdAt: -1 });
 
+// Compound indexes for public filter queries
+jobSchema.index({ status: 1, isApproved: 1, jobType: 1, createdAt: -1 });
+jobSchema.index({ status: 1, isApproved: 1, workMode: 1, createdAt: -1 });
+jobSchema.index({ status: 1, isApproved: 1, experienceLevel: 1, createdAt: -1 });
+jobSchema.index({ status: 1, isApproved: 1, location: 1, createdAt: -1 });
+jobSchema.index({
+  status: 1,
+  isApproved: 1,
+  jobType: 1,
+  workMode: 1,
+  experienceLevel: 1,
+  createdAt: -1,
+});
+
 // Compound index for recruiter's job list
 jobSchema.index({ recruiter: 1, status: 1, createdAt: -1 });
 

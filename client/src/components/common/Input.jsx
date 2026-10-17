@@ -9,7 +9,8 @@ export const Input = forwardRef(function Input(
     type = 'text',
     error,
     helperText,
-    icon: LeftIcon,
+    icon: iconProp,
+    leftIcon: leftIconProp,
     rightElement,
     disabled = false,
     required = false,
@@ -19,6 +20,7 @@ export const Input = forwardRef(function Input(
   },
   ref
 ) {
+  const LeftIcon = iconProp || leftIconProp;
   const inputId = id || name || `input-${Math.random().toString(36).slice(2, 8)}`;
   const errorId = error ? `${inputId}-error` : undefined;
   const helperId = helperText ? `${inputId}-helper` : undefined;

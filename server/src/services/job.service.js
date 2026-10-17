@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import Job, { JOB_STATUS } from '../models/job.model.js';
 import { USER_ROLES } from '../models/user.model.js';
 import { NotFoundError, BadRequestError } from '../utils/errors.js';
+import { escapeRegex, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE } from '../utils/query.utils.js';
 
 // Allowed fields that can be created or updated directly
 const ALLOWED_UPDATE_FIELDS = [
@@ -54,30 +55,31 @@ export const listJobs = async (query = {}, currentUser = null) => {
   // 2. Keyword Search
   const search = query.search || query.q;
   if (search && typeof search === 'string' && search.trim()) {
-    const searchRegex = new RegExp(search.trim(), 'i');
+    const searchRegex = new RegExp(escapeRegex(search.trim()), 'i');
     filter.$or = [
       { title: searchRegex },
       { company: searchRegex },
       { location: searchRegex },
       { description: searchRegex },
+      { requiredSkills: searchRegex },
     ];
   }
 
   // 3. Structured Filters
-  if (query.jobType) {
-    filter.jobType = query.jobType;
+  if (query.location && typeof query.location === 'string' && query.location.trim()) {
+    filter.location = new RegExp(escapeRegex(query.location.trim()), 'i');
   }
 
-  if (query.workMode) {
-    filter.workMode = query.workMode;
+  if (query.jobType && typeof query.jobType === 'string' && query.jobType.trim()) {
+    filter.jobType = query.jobType.trim();
   }
 
-  if (query.experienceLevel) {
-    filter.experienceLevel = query.experienceLevel;
+  if (query.workMode && typeof query.workMode === 'string' && query.workMode.trim()) {
+    filter.workMode = query.workMode.trim();
   }
 
-  if (query.location && !filter.$or) {
-    filter.location = new RegExp(query.location.trim(), 'i');
+  if (query.experienceLevel && typeof query.experienceLevel === 'string' && query.experienceLevel.trim()) {
+    filter.experienceLevel = query.experienceLevel.trim();
   }
 
   if (query.skills) {
@@ -93,15 +95,24 @@ export const listJobs = async (query = {}, currentUser = null) => {
     }
   }
 
-  // 4. Pagination & Sorting
+  // 4. Pagination & Sorting (Default newest first)
+  const rawLimit = query.limit || query.pageSize;
   const page = Math.max(1, parseInt(query.page, 10) || 1);
-  const limit = Math.min(50, Math.max(1, parseInt(query.limit, 10) || 10));
+  const limit = Math.min(
+    MAX_PAGE_SIZE,
+    Math.max(1, parseInt(rawLimit, 10) || DEFAULT_PAGE_SIZE)
+  );
   const skip = (page - 1) * limit;
 
   let sort = { createdAt: -1 };
-  if (query.sortBy) {
-    const order = query.order === 'asc' ? 1 : -1;
-    sort = { [query.sortBy]: order };
+  if (query.sortBy && typeof query.sortBy === 'string' && query.sortBy.trim()) {
+    const sortField = query.sortBy.trim();
+    const order =
+      query.order === 'asc' || query.order === '1' || query.order === 1 ? 1 : -1;
+    sort = { [sortField]: order };
+    if (sortField !== 'createdAt') {
+      sort.createdAt = -1;
+    }
   }
 
   const [jobs, total] = await Promise.all([
@@ -114,13 +125,16 @@ export const listJobs = async (query = {}, currentUser = null) => {
     Job.countDocuments(filter),
   ]);
 
+  const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
   return {
     jobs,
     pagination: {
       total,
       page,
       limit,
-      totalPages: Math.ceil(total / limit) || 1,
+      pageSize: limit,
+      totalPages,
       hasMore: page * limit < total,
     },
   };
