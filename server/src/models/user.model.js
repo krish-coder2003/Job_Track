@@ -39,6 +39,16 @@ const resumeSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    storageProvider: {
+      type: String,
+      enum: ['local', 'cloudinary'],
+      default: 'local',
+    },
+    storageKey: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     uploadedAt: {
       type: Date,
       default: Date.now,
@@ -277,6 +287,17 @@ userSchema.methods.toPublicProfile = function () {
   const obj = this.toObject();
   delete obj.passwordHash;
   delete obj.__v;
+  if (obj.resume) {
+    const hasKey = Boolean(obj.resume.storageKey);
+    obj.resume = {
+      filename: hasKey ? obj.resume.filename : '',
+      fileSize: hasKey ? obj.resume.fileSize : null,
+      mimeType: hasKey ? obj.resume.mimeType : '',
+      url: hasKey ? '/api/users/me/resume' : '',
+      uploadedAt: hasKey ? obj.resume.uploadedAt : null,
+      hasResume: hasKey,
+    };
+  }
   return obj;
 };
 

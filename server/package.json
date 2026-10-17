@@ -8,13 +8,14 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint .",
-    "test": "node test/user.model.test.js && node test/auth.register.test.js && node test/auth.login.test.js && node test/auth.authorization.test.js && node test/job.crud.test.js && node test/job.discovery.test.js",
+    "test": "node test/user.model.test.js && node test/auth.register.test.js && node test/auth.login.test.js && node test/auth.authorization.test.js && node test/job.crud.test.js && node test/job.discovery.test.js && node test/user.profile.test.js",
     "test:model": "node test/user.model.test.js",
     "test:register": "node test/auth.register.test.js",
     "test:login": "node test/auth.login.test.js",
     "test:authz": "node test/auth.authorization.test.js",
     "test:jobs": "node test/job.crud.test.js",
     "test:discovery": "node test/job.discovery.test.js",
+    "test:profile": "node test/user.profile.test.js",
     "test:auth": "node test/auth.register.test.js && node test/auth.login.test.js"
   },
   "keywords": [
@@ -28,13 +29,15 @@
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^8.9.5",
-    "morgan": "^1.10.0"
+    "morgan": "^1.10.0",
+    "multer": "^2.4.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

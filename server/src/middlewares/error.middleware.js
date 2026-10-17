@@ -46,6 +46,19 @@ export const errorHandler = (err, req, res, _next) => {
     errors = [{ message: 'Please provide valid JSON payload' }];
   }
 
+  // 5. Multer Upload Error (File size limit, field mismatch, etc.)
+  else if (err.name === 'MulterError') {
+    statusCode = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'File size exceeds maximum allowed limit (5MB).';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = `Unexpected upload field '${err.field || 'file'}'. Please upload file using field name 'resume'.`;
+    } else {
+      message = err.message || 'File upload error';
+    }
+    errors = [{ field: err.field || 'resume', message }];
+  }
+
   // Sanitize message to guarantee no connection URIs or credentials are leaked
   message = sanitizeMongoURI(message);
 
