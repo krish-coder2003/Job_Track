@@ -20,6 +20,10 @@ import {
   Info,
   ArrowRight,
   User,
+  RefreshCw,
+  CheckCircle2,
+  Briefcase,
+  Play,
 } from 'lucide-react';
 
 export default function UiShowcasePage() {
@@ -27,6 +31,20 @@ export default function UiShowcasePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSize, setModalSize] = useState('md');
   const [btnLoading, setBtnLoading] = useState(false);
+
+  // Loading & Skeleton component simulator state
+  const [isSimulatingSkeleton, setIsSimulatingSkeleton] = useState(false);
+  const [isLoadedData, setIsLoadedData] = useState(false);
+
+  const handleTriggerAsyncSimulation = () => {
+    setIsSimulatingSkeleton(true);
+    setIsLoadedData(false);
+    setTimeout(() => {
+      setIsSimulatingSkeleton(false);
+      setIsLoadedData(true);
+      toast.success('Simulated API request completed! Live content rendered.', 'Fetch Complete');
+    }, 2000);
+  };
 
   // Form demonstration state
   const [formData, setFormData] = useState({
@@ -407,44 +425,145 @@ export default function UiShowcasePage() {
 
             {/* 7. Loading Indicators & Skeletons Section */}
             <section id="section-loading" className="space-y-4">
-              <div className="border-b border-slate-200 pb-2">
-                <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-blue-600" />
-                  <span>7. Loading Indicators & Skeletons</span>
-                </h2>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Smooth CSS and SVG loaders along with pulse skeletons for content placeholders.
-                </p>
+              <div className="border-b border-slate-200 pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-600" />
+                    <span>7. Loading Indicators & Skeletons</span>
+                    <Badge variant="blue" size="sm">Design System Gallery</Badge>
+                  </h2>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Reusable indicators and pulse skeleton placeholders displayed across the app during API fetch states.
+                  </p>
+                </div>
+
+                {/* Simulation Control Toolbar */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={handleTriggerAsyncSimulation}
+                    loading={isSimulatingSkeleton}
+                    leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                  >
+                    {isSimulatingSkeleton ? 'Fetching Data...' : 'Simulate 2s API Request'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIsSimulatingSkeleton(false);
+                      setIsLoadedData((prev) => !prev);
+                    }}
+                  >
+                    {isLoadedData ? 'Show Skeleton State' : 'Show Loaded State'}
+                  </Button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Spinners & Indicators Gallery */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Spinners & Loaders</CardTitle>
-                    <CardDescription>Configurable size and color variations.</CardDescription>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Spinners & Loaders Gallery</CardTitle>
+                      <Badge variant="slate" size="sm">Component Variants</Badge>
+                    </div>
+                    <CardDescription>Configurable size, variant colors, and text captions.</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex items-center space-x-8">
-                    <LoadingIndicator size="sm" />
-                    <LoadingIndicator size="md" text="Loading jobs..." />
-                    <LoadingIndicator size="lg" variant="navy" />
-                    <LoadingIndicator size="xl" variant="primary" />
+                  <CardContent className="space-y-6">
+                    <div className="flex flex-wrap items-center gap-6">
+                      <div className="text-center space-y-2">
+                        <LoadingIndicator size="sm" />
+                        <span className="text-[10px] text-slate-400 block font-mono">Small (sm)</span>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <LoadingIndicator size="md" variant="primary" />
+                        <span className="text-[10px] text-slate-400 block font-mono">Medium (md)</span>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <LoadingIndicator size="lg" variant="navy" />
+                        <span className="text-[10px] text-slate-400 block font-mono">Large (lg)</span>
+                      </div>
+                      <div className="text-center space-y-2">
+                        <LoadingIndicator size="xl" variant="primary" />
+                        <span className="text-[10px] text-slate-400 block font-mono">Extra Large (xl)</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center space-x-3">
+                      <LoadingIndicator size="sm" />
+                      <span className="text-xs text-slate-600">
+                        Loading state with inline caption: <strong className="font-semibold text-slate-800">"Fetching live listings..."</strong>
+                      </span>
+                    </div>
                   </CardContent>
                 </Card>
 
+                {/* Interactive Pulse Skeleton vs Loaded Content */}
                 <Card>
                   <CardHeader>
-                    <CardTitle>Pulse Skeleton Placeholders</CardTitle>
-                    <CardDescription>Skeleton blocks simulating loading content.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Skeleton className="w-10 h-10 rounded-full" />
-                      <div className="space-y-2 flex-1">
-                        <Skeleton className="h-4 w-1/3" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </div>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Pulse Skeleton vs Live Content</CardTitle>
+                      <Badge variant={isSimulatingSkeleton || !isLoadedData ? 'amber' : 'emerald'} dot size="sm">
+                        {isSimulatingSkeleton
+                          ? 'Simulating API Latency...'
+                          : isLoadedData
+                          ? 'Live Content Loaded'
+                          : 'Skeleton Placeholder Active'}
+                      </Badge>
                     </div>
-                    <Skeleton className="h-20 w-full" />
+                    <CardDescription>
+                      {isSimulatingSkeleton || !isLoadedData
+                        ? 'Simulating content loading placeholder while waiting for network response.'
+                        : 'Simulated network response arrived! Displaying resolved content card.'}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {isSimulatingSkeleton || !isLoadedData ? (
+                      /* SKELETON PLACEHOLDER STATE */
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-3">
+                          <Skeleton className="w-10 h-10 rounded-xl" />
+                          <div className="space-y-2 flex-1">
+                            <Skeleton className="h-4 w-1/3" />
+                            <Skeleton className="h-3 w-1/2" />
+                          </div>
+                        </div>
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-16 w-full rounded-lg" />
+                        <div className="flex items-center justify-between pt-1">
+                          <Skeleton className="h-6 w-24 rounded-full" />
+                          <Skeleton className="h-8 w-20 rounded-md" />
+                        </div>
+                      </div>
+                    ) : (
+                      /* LIVE RESOLVED DATA STATE */
+                      <div className="space-y-3 p-4 rounded-xl bg-blue-50/40 border border-blue-100 transition-all">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-xs">
+                            <Briefcase className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1">
+                            <h4 className="text-sm font-bold text-slate-900">Senior Full-Stack Engineer</h4>
+                            <p className="text-xs text-slate-500">Stripe · San Francisco, CA (Hybrid)</p>
+                          </div>
+                          <Badge variant="blue">$145k - $185k</Badge>
+                        </div>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                          Design and architect robust ATS backend pipelines and modern microservices using Node.js, Express, and MongoDB.
+                        </p>
+                        <div className="flex items-center justify-between pt-2 border-t border-blue-100/60">
+                          <div className="flex items-center space-x-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span className="text-xs font-semibold text-emerald-700">Data Resolved & Ready</span>
+                          </div>
+                          <Button size="sm" variant="secondary" onClick={() => setIsLoadedData(false)}>
+                            Reset to Skeleton
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
