@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import CandidateProfileSection from '../components/candidate/CandidateProfileSection';
 import CandidateApplicationsSection from '../components/candidate/CandidateApplicationsSection';
 import RecruiterDashboardSection from '../components/recruiter/RecruiterDashboardSection';
+import AdminDashboardSection from '../components/admin/AdminDashboardSection';
 import {
   Briefcase,
   CheckCircle2,
@@ -35,7 +36,7 @@ export default function DashboardPage() {
               {isRecruiter
                 ? 'Real-time candidate pipeline metrics, job listings management, and application reviews.'
                 : isAdmin
-                ? 'System administration, user verification, and platform oversight.'
+                ? 'System administration, user verification, job moderation, and platform oversight.'
                 : 'Track your active job applications, interview notifications, and recruitment status.'}
             </p>
           </div>
@@ -49,8 +50,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recruiter / Admin Live View */}
-        {(isRecruiter || isAdmin) && <RecruiterDashboardSection />}
+        {/* Administrator Platform Management View */}
+        {isAdmin && <AdminDashboardSection />}
+
+        {/* Recruiter Live View */}
+        {isRecruiter && <RecruiterDashboardSection />}
 
         {/* Candidate View: Real Backend Applications Management & Profile */}
         {!isRecruiter && !isAdmin && (

@@ -212,6 +212,20 @@ const userSchema = new mongoose.Schema(
       alias: 'accountStatus',
       index: true,
     },
+    disabledReason: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    disabledAt: {
+      type: Date,
+      default: null,
+    },
+    disabledBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true, // Automatically provides createdAt and updatedAt

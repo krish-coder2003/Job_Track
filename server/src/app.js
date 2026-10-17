@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes.js';
 import jobRoutes from './routes/job.routes.js';
 import userRoutes from './routes/user.routes.js';
 import applicationRoutes from './routes/application.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 
 const app = express();
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/health', healthRoutes);
 
 // 404 Not Found handler

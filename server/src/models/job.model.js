@@ -176,6 +176,20 @@ const jobSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    moderationNote: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    moderatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
+    moderatedAt: {
+      type: Date,
+      default: null,
+    },
     recruiter: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
