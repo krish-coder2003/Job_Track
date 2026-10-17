@@ -7,6 +7,8 @@ export const APPLICATION_STATUS = Object.freeze({
   INTERVIEWING: 'interviewing',
   REJECTED: 'rejected',
   ACCEPTED: 'accepted',
+  WITHDRAWN: 'withdrawn',
+  CANCELLED: 'cancelled',
 });
 
 /**

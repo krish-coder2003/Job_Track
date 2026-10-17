@@ -153,14 +153,134 @@ export const getApplicationsForJob = async (jobId, requestingUser) => {
 };
 
 /**
- * Retrieve all applications submitted by the authenticated candidate
+ * Retrieve applications submitted by the authenticated candidate with pagination,
+ * status filtering, and server-side summary aggregation.
  */
-export const getCandidateApplications = async (candidateId) => {
-  const applications = await Application.find({ candidate: candidateId })
-    .populate('job', 'title company location jobType workMode status applicationDeadline recruiter')
-    .sort({ createdAt: -1 });
+export const getCandidateApplications = async (candidateId, query = {}) => {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(50, Math.max(1, parseInt(query.limit || query.pageSize, 10) || 10));
+  const skip = (page - 1) * limit;
 
-  return applications;
+  const filter = { candidate: candidateId };
+
+  if (query.status && query.status !== 'all') {
+    filter.status = query.status.toLowerCase();
+  }
+
+  // 1. Fetch filtered and paginated applications
+  const [applications, totalFiltered, statusAggregations] = await Promise.all([
+    Application.find(filter)
+      .populate('job', 'title company location jobType workMode status salary applicationDeadline recruiter')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Application.countDocuments(filter),
+    Application.aggregate([
+      { $match: { candidate: candidateId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+  ]);
+
+  // 2. Build authoritative server-calculated statistics
+  const byStatus = {
+    pending: 0,
+    reviewing: 0,
+    shortlisted: 0,
+    interviewing: 0,
+    rejected: 0,
+    accepted: 0,
+    withdrawn: 0,
+    cancelled: 0,
+  };
+
+  let totalApplications = 0;
+  for (const item of statusAggregations) {
+    if (item._id) {
+      byStatus[item._id] = item.count;
+      totalApplications += item.count;
+    }
+  }
+
+  const totalPages = Math.ceil(totalFiltered / limit) || 1;
+
+  return {
+    applications,
+    pagination: {
+      page,
+      limit,
+      pageSize: limit,
+      total: totalFiltered,
+      totalPages,
+      hasMore: page < totalPages,
+    },
+    summary: {
+      total: totalApplications,
+      byStatus,
+    },
+  };
+};
+
+/**
+ * Retrieve a single application by ID with strict access control
+ * (Applicant, Recruiter owner, or Admin only)
+ */
+export const getApplicationById = async (applicationId, requestingUser) => {
+  const application = await Application.findById(applicationId)
+    .populate('job', 'title company description location jobType workMode salary status applicationDeadline recruiter')
+    .populate('candidate', 'name email phone location skills');
+
+  if (!application) {
+    throw new NotFoundError('Application record not found.');
+  }
+
+  const isApplicant = application.candidate?._id?.toString() === requestingUser._id.toString();
+  const isJobRecruiter =
+    application.job?.recruiter &&
+    application.job.recruiter.toString() === requestingUser._id.toString();
+  const isAdmin = requestingUser.role === USER_ROLES.ADMIN;
+
+  if (!isApplicant && !isJobRecruiter && !isAdmin) {
+    throw new ForbiddenError('You are not authorized to view this application.');
+  }
+
+  return application;
+};
+
+/**
+ * Cancel / withdraw an application when permitted by business rules.
+ * Permitted only by the applicant when application is in 'pending' or 'reviewing' state.
+ */
+export const cancelApplication = async (applicationId, candidateUser) => {
+  const application = await Application.findById(applicationId).populate(
+    'job',
+    'title company'
+  );
+
+  if (!application) {
+    throw new NotFoundError('Application record not found.');
+  }
+
+  // Ensure only the applicant can cancel their application
+  if (application.candidate.toString() !== candidateUser._id.toString()) {
+    throw new ForbiddenError('You can only cancel your own applications.');
+  }
+
+  // Check if status permits cancellation
+  const CANCELLABLE_STATUSES = [
+    APPLICATION_STATUS.PENDING,
+    APPLICATION_STATUS.REVIEWING,
+  ];
+
+  if (!CANCELLABLE_STATUSES.includes(application.status)) {
+    throw new BadRequestError(
+      `Cannot cancel application with status '${application.status}'. Only pending or reviewing applications may be withdrawn.`
+    );
+  }
+
+  application.status = APPLICATION_STATUS.WITHDRAWN;
+  await application.save();
+
+  return application;
 };
 
 /**
@@ -182,5 +302,7 @@ export default {
   createApplication,
   getApplicationsForJob,
   getCandidateApplications,
+  getApplicationById,
+  cancelApplication,
   getApplicationStatusForJob,
 };

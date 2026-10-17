@@ -446,7 +446,7 @@ async function runApplicationTests() {
     assert(statusRes.status === 200, 'Candidate checking job application status returns 200 OK');
     assert(statusRes.body.data.hasApplied === true, 'hasApplied is true for applied candidate');
 
-    // 4. Candidate listing all their submitted applications
+    // 4. Candidate listing all their submitted applications via /api/applications/me
     const myAppsRes = await request(app)
       .get('/api/applications/me')
       .set('Authorization', `Bearer ${tokenCandidate}`);
@@ -454,6 +454,121 @@ async function runApplicationTests() {
     assert(myAppsRes.status === 200, 'Candidate listing own applications returns 200 OK');
     assert(myAppsRes.body.data.applications.length >= 1, 'My applications list contains submitted job');
     assert(myAppsRes.body.data.applications[0].job.title !== undefined, 'Job info populated in my applications');
+
+    // =============================================================
+    // TEST GROUP 7: Candidate Dashboard API: GET /api/applications/my
+    // =============================================================
+    console.log('\n[Test Group 7] Candidate Dashboard API: GET /api/applications/my:');
+
+    // 1. Candidate Bob querying his applications via /my
+    const bobDashboardRes = await request(app)
+      .get('/api/applications/my?page=1&limit=5')
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(bobDashboardRes.status === 200, 'GET /api/applications/my returns 200 OK');
+    assert(bobDashboardRes.body.success === true, 'Response indicates success: true');
+    assert(bobDashboardRes.body.pagination !== undefined, 'Response includes pagination metadata');
+    assert(bobDashboardRes.body.pagination.total >= 1, 'Pagination reflects candidate applications count');
+    assert(bobDashboardRes.body.pagination.page === 1, 'Pagination reflects current page');
+    assert(bobDashboardRes.body.summary !== undefined, 'Response includes server-calculated summary stats');
+    assert(typeof bobDashboardRes.body.summary.total === 'number', 'Summary total is a number');
+    assert(bobDashboardRes.body.summary.byStatus?.pending >= 1, 'Summary byStatus tracks pending applications');
+
+    // 2. Candidate Diana querying her applications - candidate isolation check
+    const dianaDashboardRes = await request(app)
+      .get('/api/applications/my')
+      .set('Authorization', `Bearer ${tokenSecondCandidate}`);
+
+    assert(dianaDashboardRes.status === 200, 'Diana GET /api/applications/my returns 200 OK');
+    assert(dianaDashboardRes.body.data.applications.length === 1, 'Candidate only sees their own applications');
+    assert(
+      dianaDashboardRes.body.data.applications[0].candidate.toString() === secondCandidate._id.toString() ||
+        dianaDashboardRes.body.data.applications[0].candidate?._id?.toString() === secondCandidate._id.toString() ||
+        dianaDashboardRes.body.data.applications[0].resume.filename === 'Diana_Resume.pdf',
+      'Diana applications strictly belong to Diana'
+    );
+
+    // 3. Status filter query
+    const filteredPendingRes = await request(app)
+      .get('/api/applications/my?status=pending')
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(filteredPendingRes.status === 200, 'Status filter query returns 200 OK');
+    assert(
+      filteredPendingRes.body.data.applications.every((a) => a.status === 'pending'),
+      'All filtered applications have status pending'
+    );
+
+    // 4. Status filter with 0 matches returns empty array and correct total
+    const filteredEmptyRes = await request(app)
+      .get('/api/applications/my?status=accepted')
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(filteredEmptyRes.status === 200, 'Empty status filter query returns 200 OK');
+    assert(filteredEmptyRes.body.data.applications.length === 0, 'No applications returned for empty filter');
+    assert(filteredEmptyRes.body.pagination.total === 0, 'Pagination total is 0 for non-matching filter');
+    assert(filteredEmptyRes.body.summary.total >= 1, 'Summary still accurately reflects total candidate applications');
+
+    // =============================================================
+    // TEST GROUP 8: Application Details View & Cancellation
+    // =============================================================
+    console.log('\n[Test Group 8] Application Details View & Cancellation:');
+
+    const bobAppId = bobDashboardRes.body.data.applications[0]._id;
+
+    // 1. Bob views details of his application
+    const detailsRes = await request(app)
+      .get(`/api/applications/${bobAppId}`)
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(detailsRes.status === 200, 'Candidate views own application details returns 200 OK');
+    assert(detailsRes.body.data.application._id === bobAppId, 'Details returned for correct application');
+    assert(detailsRes.body.data.application.job.title !== undefined, 'Application details include populated job');
+    assert(detailsRes.body.data.application.resume.filename !== undefined, 'Application details include resume snapshot');
+
+    // 2. Diana attempting to view Bob's application details yields 403 Forbidden
+    const forbiddenDetailsRes = await request(app)
+      .get(`/api/applications/${bobAppId}`)
+      .set('Authorization', `Bearer ${tokenSecondCandidate}`);
+
+    assert(forbiddenDetailsRes.status === 403, 'Other candidate viewing private application yields 403 Forbidden');
+
+    // 3. Diana attempting to cancel Bob's application yields 403 Forbidden
+    const forbiddenCancelRes = await request(app)
+      .patch(`/api/applications/${bobAppId}/cancel`)
+      .set('Authorization', `Bearer ${tokenSecondCandidate}`);
+
+    assert(forbiddenCancelRes.status === 403, 'Candidate attempting to cancel another user application yields 403 Forbidden');
+
+    // 4. Bob cancels / withdraws his pending application
+    const cancelRes = await request(app)
+      .patch(`/api/applications/${bobAppId}/cancel`)
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(cancelRes.status === 200, 'Candidate cancelling application returns 200 OK');
+    assert(cancelRes.body.data.application.status === 'withdrawn', 'Application status updated to withdrawn');
+
+    // 5. Duplicate cancellation attempt yields 400 Bad Request
+    const secondCancelRes = await request(app)
+      .patch(`/api/applications/${bobAppId}/cancel`)
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(secondCancelRes.status === 400, 'Second cancellation attempt on withdrawn application yields 400 Bad Request');
+    assert(
+      secondCancelRes.body.message.toLowerCase().includes('cannot cancel'),
+      'Error message explains already withdrawn status'
+    );
+
+    // 6. Verification: Dashboard summary reflects the withdrawn status
+    const postCancelDashboardRes = await request(app)
+      .get('/api/applications/my')
+      .set('Authorization', `Bearer ${tokenCandidate}`);
+
+    assert(postCancelDashboardRes.status === 200, 'Dashboard reflects updated state');
+    assert(
+      postCancelDashboardRes.body.summary.byStatus.withdrawn >= 1,
+      'Summary byStatus accurately increments withdrawn counter'
+    );
 
     console.log('\n----------------------------------------------------');
     console.log(`Summary: ${passed}/${total} assertions PASSED.`);
