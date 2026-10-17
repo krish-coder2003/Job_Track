@@ -284,6 +284,52 @@ export const cancelApplication = async (applicationId, candidateUser) => {
 };
 
 /**
+ * Update candidate application status (by Job owner Recruiter or Admin)
+ */
+export const updateApplicationStatus = async (applicationId, newStatus, requestingUser) => {
+  const allowedStatuses = [
+    APPLICATION_STATUS.PENDING,
+    APPLICATION_STATUS.REVIEWING,
+    APPLICATION_STATUS.SHORTLISTED,
+    APPLICATION_STATUS.INTERVIEWING,
+    APPLICATION_STATUS.ACCEPTED,
+    APPLICATION_STATUS.REJECTED,
+  ];
+
+  if (!allowedStatuses.includes(newStatus)) {
+    throw new BadRequestError(
+      `Invalid status '${newStatus}'. Must be one of: ${allowedStatuses.join(', ')}`
+    );
+  }
+
+  const application = await Application.findById(applicationId).populate('job');
+  if (!application) {
+    throw new NotFoundError('Application record not found.');
+  }
+
+  const isOwner =
+    application.job?.recruiter &&
+    application.job.recruiter.toString() === requestingUser._id.toString();
+  const isAdmin = requestingUser.role === USER_ROLES.ADMIN;
+
+  if (!isOwner && !isAdmin) {
+    throw new ForbiddenError(
+      'You are not authorized to update applications for another recruiter’s job listing.'
+    );
+  }
+
+  application.status = newStatus;
+  await application.save();
+
+  await application.populate([
+    { path: 'candidate', select: 'name email phone location skills' },
+    { path: 'job', select: 'title company location status' },
+  ]);
+
+  return application;
+};
+
+/**
  * Check if the candidate has already applied to a given job
  */
 export const getApplicationStatusForJob = async (jobId, candidateId) => {
@@ -304,5 +350,6 @@ export default {
   getCandidateApplications,
   getApplicationById,
   cancelApplication,
+  updateApplicationStatus,
   getApplicationStatusForJob,
 };

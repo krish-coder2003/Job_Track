@@ -6,6 +6,7 @@ import {
   updateJob,
   deleteJob,
   updateJobStatus,
+  getRecruiterOverview,
 } from '../controllers/job.controller.js';
 import {
   applyToJob,
@@ -36,6 +37,19 @@ const router = Router();
  * @access  Public
  */
 router.get('/', optionalAuthenticate, validateListJobsQuery, getJobs);
+
+/**
+ * @route   GET /api/jobs/recruiter/overview
+ * @desc    Get recruiter dashboard live overview statistics and recent candidate activity
+ * @access  Private (Recruiter / Admin only)
+ */
+router.get(
+  '/recruiter/overview',
+  authenticate,
+  requireActiveAccount,
+  authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
+  getRecruiterOverview
+);
 
 /**
  * @route   GET /api/jobs/:id

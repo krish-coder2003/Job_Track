@@ -67,6 +67,18 @@ export const cancelApplicationApi = async (id) => {
   return response.data;
 };
 
+/**
+ * Update candidate application hiring stage / status
+ * PATCH /api/applications/:id/status
+ *
+ * @param {string} id - Application ObjectId
+ * @param {string} status - New application status (reviewing, shortlisted, interviewing, accepted, rejected)
+ */
+export const updateApplicationStatusApi = async (id, status) => {
+  const response = await api.patch(`/applications/${id}/status`, { status });
+  return response.data;
+};
+
 export default {
   applyToJobApi,
   getJobApplicationsApi,
@@ -74,4 +86,5 @@ export default {
   getMyApplicationsApi,
   getApplicationByIdApi,
   cancelApplicationApi,
+  updateApplicationStatusApi,
 };

@@ -114,6 +114,22 @@ export const updateJobStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to handle GET /api/jobs/recruiter/overview
+ * Recruiter dashboard stats and recent applications
+ */
+export const getRecruiterOverview = async (req, res, next) => {
+  try {
+    const data = await jobService.getRecruiterOverview(req.user._id);
+    res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   getJobs,
   getJobById,
@@ -121,4 +137,5 @@ export default {
   updateJob,
   deleteJob,
   updateJobStatus,
+  getRecruiterOverview,
 };

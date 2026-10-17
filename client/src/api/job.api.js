@@ -68,6 +68,15 @@ export const updateJobStatusApi = async (id, status) => {
   return response.data;
 };
 
+/**
+ * Retrieve recruiter overview statistics and recent candidate pipeline activity
+ * GET /api/jobs/recruiter/overview
+ */
+export const getRecruiterOverviewApi = async () => {
+  const response = await api.get('/jobs/recruiter/overview');
+  return response.data;
+};
+
 export default {
   getJobs: getJobsApi,
   getJobById: getJobByIdApi,
@@ -75,4 +84,5 @@ export default {
   updateJob: updateJobApi,
   deleteJob: deleteJobApi,
   updateJobStatus: updateJobStatusApi,
+  getRecruiterOverview: getRecruiterOverviewApi,
 };

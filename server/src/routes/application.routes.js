@@ -3,6 +3,7 @@ import {
   getMyApplications,
   getApplicationById,
   cancelApplication,
+  updateApplicationStatus,
 } from '../controllers/application.controller.js';
 import {
   authenticate,
@@ -65,16 +66,16 @@ router.patch(
 );
 
 /**
- * @route   DELETE /api/applications/:id
- * @desc    Cancel / withdraw application alias
- * @access  Private (Candidate owner only)
+ * @route   PATCH /api/applications/:id/status
+ * @desc    Update candidate application stage / status
+ * @access  Private (Job owner Recruiter or Admin only)
  */
-router.delete(
-  '/:id',
+router.patch(
+  '/:id/status',
   authenticate,
   requireActiveAccount,
-  authorize(USER_ROLES.CANDIDATE),
-  cancelApplication
+  authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
+  updateApplicationStatus
 );
 
 export default router;

@@ -140,11 +140,44 @@ export const getApplicationStatus = async (req, res, next) => {
   }
 };
 
+/**
+ * Controller to handle PATCH /api/applications/:id/status
+ * Recruiter updates applicant status/stage
+ */
+export const updateApplicationStatus = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status field is required.',
+      });
+    }
+
+    const application = await applicationService.updateApplicationStatus(
+      req.params.id,
+      status,
+      req.user
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Application status updated to ${status}.`,
+      data: {
+        application,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export default {
   applyToJob,
   getJobApplications,
   getMyApplications,
   getApplicationById,
   cancelApplication,
+  updateApplicationStatus,
   getApplicationStatus,
 };
