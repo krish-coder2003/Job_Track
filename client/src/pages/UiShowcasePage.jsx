@@ -494,7 +494,7 @@ export default function UiShowcasePage() {
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 flex items-center space-x-3">
                       <LoadingIndicator size="sm" />
                       <span className="text-xs text-slate-600">
-                        Loading state with inline caption: <strong className="font-semibold text-slate-800">"Fetching live listings..."</strong>
+                        Loading state with inline caption: <strong className="font-semibold text-slate-800">&ldquo;Fetching live listings...&rdquo;</strong>
                       </span>
                     </div>
                   </CardContent>

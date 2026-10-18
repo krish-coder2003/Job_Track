@@ -15,7 +15,9 @@
     "server": "npm --prefix server run dev",
     "server:start": "npm --prefix server start",
     "install:all": "npm install && npm --prefix client install && npm --prefix server install",
-    "lint": "npm --prefix client run lint && npm --prefix server run lint"
+    "lint": "npm --prefix client run lint && npm --prefix server run lint",
+    "test": "npm --prefix server test",
+    "test:security": "npm --prefix server run test:security"
   },
   "keywords": [
     "job-portal",

@@ -634,7 +634,7 @@ export default function CandidateApplicationsSection({ onStatsLoaded }) {
                         </div>
                         {hist.note && (
                           <p className="text-[11px] text-slate-500 italic pl-0.5">
-                            "{hist.note}"
+                            &ldquo;{hist.note}&rdquo;
                           </p>
                         )}
                       </div>

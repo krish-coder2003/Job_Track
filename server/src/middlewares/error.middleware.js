@@ -65,12 +65,23 @@ export const errorHandler = (err, req, res, _next) => {
     errors = [{ field: err.field || 'resume', message }];
   }
 
+  // 6. Request payload too large (Express body-parser limit)
+  else if (err.type === 'entity.too.large' || err.status === 413) {
+    statusCode = 413;
+    message = 'Request payload exceeds maximum allowed size (100KB).';
+    errors = [{ message }];
+  }
+
   // Sanitize message to guarantee no connection URIs or credentials are leaked
   message = sanitizeMongoURI(message);
 
   // Log 500 server errors
   if (statusCode >= 500) {
     console.error(`[Unhandled Error] ${req.method} ${req.originalUrl}:`, sanitizeMongoURI(err.stack || err.message));
+    if (process.env.NODE_ENV === 'production') {
+      message = 'An unexpected internal server error occurred.';
+      errors = [];
+    }
   }
 
   res.status(statusCode).json({

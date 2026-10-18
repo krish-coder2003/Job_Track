@@ -1,10 +1,9 @@
 import User, { USER_ROLES, ACCOUNT_STATUS } from '../models/user.model.js';
 import Job, { JOB_STATUS } from '../models/job.model.js';
-import Application, { APPLICATION_STATUS } from '../models/application.model.js';
+import Application from '../models/application.model.js';
 import {
   BadRequestError,
   NotFoundError,
-  ForbiddenError,
 } from '../utils/errors.js';
 
 /**

@@ -9,18 +9,28 @@ import userRoutes from './routes/user.routes.js';
 import applicationRoutes from './routes/application.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
+import securityHeaders from './middlewares/security.middleware.js';
+import { globalRateLimiter, authRateLimiter } from './middlewares/rateLimit.middleware.js';
 
 const app = express();
 
-// Middlewares
+// Security Headers (OWASP recommendations)
+app.use(securityHeaders);
+
+// CORS Configuration
 app.use(
   cors({
     origin: process.env.CLIENT_URL || 'http://localhost:5173',
     credentials: true,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+
+// Global Rate Limiting
+app.use(globalRateLimiter);
+
+// Request body limits to prevent Denial-of-Service / Memory Exhaustion
+app.use(express.json({ limit: '100kb' }));
+app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 app.use(cookieParser());
 
 if (process.env.NODE_ENV !== 'test') {
@@ -37,7 +47,7 @@ app.get('/', (req, res) => {
 });
 
 // API Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);

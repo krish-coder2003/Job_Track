@@ -19,10 +19,12 @@ import mongoose from 'mongoose';
 export const authenticate = async (req, res, next) => {
   try {
     let token = null;
+    let isCookieAuth = false;
 
     // 1. Check HTTP-only cookie
     if (req.cookies && req.cookies[COOKIE_NAME]) {
       token = req.cookies[COOKIE_NAME];
+      isCookieAuth = true;
     }
     // 2. Check Authorization header (Bearer <token>)
     else if (
@@ -30,10 +32,31 @@ export const authenticate = async (req, res, next) => {
       req.headers.authorization.startsWith('Bearer ')
     ) {
       token = req.headers.authorization.split(' ')[1];
+      isCookieAuth = false;
     }
 
     if (!token) {
       throw new UnauthorizedError('Authentication required. No token provided.');
+    }
+
+    // CSRF Defense: On state-changing mutations authenticated via cookie,
+    // ensure Origin matches allowed frontend origin if Origin header is present.
+    if (isCookieAuth && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+      const origin = req.headers.origin;
+      if (origin) {
+        const allowedOrigins = [
+          process.env.CLIENT_URL || 'http://localhost:5173',
+          'http://localhost:5173',
+          'http://localhost:3000',
+        ].map((url) => url.toLowerCase().replace(/\/$/, ''));
+
+        const cleanOrigin = origin.toLowerCase().replace(/\/$/, '');
+        if (!allowedOrigins.includes(cleanOrigin)) {
+          throw new ForbiddenError(
+            'Cross-site request blocked: Origin not allowed (CSRF Protection).'
+          );
+        }
+      }
     }
 
     // 3. Verify token
