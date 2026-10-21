@@ -4,6 +4,8 @@ import Button from '../common/Button';
 import Badge from '../common/Badge';
 import { Skeleton } from '../common/LoadingIndicator';
 import { useToast } from '../common/Toast';
+import ATSReportModal from './ATSReportModal';
+import { getJobATSReportsApi } from '../../api/ats.api';
 import {
   getJobApplicationsApi,
   updateApplicationStatusApi,
@@ -20,21 +22,14 @@ import {
   Phone,
   MapPin,
   Calendar,
-  CheckCircle2,
   AlertCircle,
   Clock,
-  Sparkles,
-  ExternalLink,
-  ChevronDown,
   Search,
   MessageSquare,
   Lock,
   Plus,
-  Send,
   History,
-  UserCheck,
-  XCircle,
-  Filter,
+  Brain,
 } from 'lucide-react';
 
 const STATUS_FILTERS = [
@@ -79,6 +74,10 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
   const [newNoteText, setNewNoteText] = useState('');
   const [isAddingNote, setIsAddingNote] = useState(false);
 
+  // ATS report state
+  const [atsApplication, setAtsApplication] = useState(null); // application open in ATSReportModal
+  const [atsReports, setAtsReports] = useState({}); // map applicationId → report summary
+
   // Fetch applicants for this job
   const fetchApplicants = useCallback(async () => {
     if (!job?._id) return;
@@ -109,15 +108,28 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
     }
   }, [job?._id, statusFilter, searchQuery, selectedApplicant]);
 
+  // Fetch ATS score summaries for the job
+  const fetchAtsReports = useCallback(async () => {
+    if (!job?._id) return;
+    try {
+      const res = await getJobATSReportsApi(job._id);
+      setAtsReports(res.data?.reports || {});
+    } catch {
+      // Non-fatal — ATS scores are supplementary
+    }
+  }, [job?._id]);
+
   useEffect(() => {
     if (isOpen && job?._id) {
       fetchApplicants();
+      fetchAtsReports();
     } else {
       setSelectedApplicant(null);
       setStatusFilter('all');
       setSearchQuery('');
+      setAtsReports({});
     }
-  }, [isOpen, job?._id, statusFilter, searchQuery]); // Re-fetch on filter change
+  }, [isOpen, job?._id, statusFilter, searchQuery, fetchApplicants, fetchAtsReports]);
 
   // Handle stage/status update with transition validation
   const handleStatusChange = async (applicationId, newStatus, optionalNote = '') => {
@@ -180,6 +192,7 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
   if (!isOpen) return null;
 
   return (
+    <>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
@@ -391,7 +404,40 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
                     </div>
 
                     {/* Status Controls & Candidate Details Toggle */}
-                    <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                    <div className="flex items-center gap-2 shrink-0 self-end md:self-center flex-wrap">
+                      {/* ATS score badge + button */}
+                      {(() => {
+                        const atsReport = atsReports[app._id];
+                        if (atsReport?.status === 'completed' && atsReport.overallScore != null) {
+                          const s = atsReport.overallScore;
+                          const color = s >= 75 ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                            : s >= 50 ? 'text-amber-700 bg-amber-50 border-amber-200'
+                            : 'text-rose-700 bg-rose-50 border-rose-200';
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => setAtsApplication(app)}
+                              className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 border rounded-lg ${color} hover:opacity-80 transition-opacity`}
+                              title="View ATS report"
+                            >
+                              <Brain className="w-3 h-3" />
+                              ATS {s}
+                            </button>
+                          );
+                        }
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setAtsApplication(app)}
+                            className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 border border-violet-200 text-violet-700 bg-violet-50 rounded-lg hover:bg-violet-100 transition-colors"
+                            title="Run ATS analysis"
+                          >
+                            <Brain className="w-3 h-3" />
+                            ATS
+                          </button>
+                        );
+                      })()}
+
                       <Button
                         variant={isSelected ? 'secondary' : 'outline'}
                         size="sm"
@@ -577,5 +623,18 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
         )}
       </div>
     </Modal>
+
+    {/* ATS Report Modal — rendered outside the main Modal to avoid nesting */}
+    {atsApplication && (
+      <ATSReportModal
+        isOpen={Boolean(atsApplication)}
+        onClose={() => {
+          setAtsApplication(null);
+          fetchAtsReports(); // Refresh score badges after analysis
+        }}
+        application={atsApplication}
+      />
+    )}
+    </>
   );
 }

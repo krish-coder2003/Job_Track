@@ -108,7 +108,7 @@ async function runAdminTests() {
     });
 
     // Candidate applies to Job 1
-    const app1 = await Application.create({
+    const _app1 = await Application.create({
       candidate: candidateUser._id,
       job: job1._id,
       resume: candidateUser.resume,

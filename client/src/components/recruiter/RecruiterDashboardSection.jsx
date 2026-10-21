@@ -16,7 +16,6 @@ import {
   formatDate,
   formatJobType,
   formatWorkMode,
-  formatSalary,
   formatApplicationStatus,
 } from '../../utils/jobUtils';
 import JobFormModal from './JobFormModal';
@@ -25,15 +24,12 @@ import {
   Briefcase,
   Users,
   CalendarCheck,
-  TrendingUp,
   Plus,
   ArrowUpRight,
   Clock,
   Eye,
   Edit,
   Trash2,
-  Lock,
-  Unlock,
   RefreshCw,
   Search,
   ExternalLink,
@@ -42,7 +38,6 @@ import {
   AlertTriangle,
   AlertCircle,
   CheckCircle2,
-  XCircle,
 } from 'lucide-react';
 
 export default function RecruiterDashboardSection() {

@@ -20,22 +20,13 @@ import {
   Briefcase,
   FileText,
   CheckCircle2,
-  XCircle,
   AlertTriangle,
   Search,
-  Filter,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  Lock,
-  Unlock,
-  Clock,
-  Eye,
-  Check,
-  Ban,
   UserCheck,
   UserX,
-  ExternalLink,
 } from 'lucide-react';
 
 export default function AdminDashboardSection() {
@@ -476,7 +467,7 @@ export default function AdminDashboardSection() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {users.map((u) => {
-                        const isSelf = u.email === stats?.currentAdminEmail;
+                        const _isSelf = u.email === stats?.currentAdminEmail;
                         return (
                           <tr key={u._id} className="hover:bg-slate-50/60 transition-colors">
                             {/* User details */}

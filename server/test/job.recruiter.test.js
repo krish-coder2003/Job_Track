@@ -96,7 +96,7 @@ async function runRecruiterDashboardTests() {
       recruiter: recruiterA._id,
     });
 
-    const jobA2 = await Job.create({
+    const _jobA2 = await Job.create({
       title: 'DevOps Specialist',
       company: 'RecruiterTest Corp',
       description: 'Kubernetes, AWS, CI/CD pipeline management.',
@@ -112,7 +112,7 @@ async function runRecruiterDashboardTests() {
     });
 
     // Recruiter B creates a job
-    const jobB1 = await Job.create({
+    const _jobB1 = await Job.create({
       title: 'Marketing Specialist',
       company: 'RecruiterTest Beta',
       description: 'Growth and demand generation lead.',

@@ -8,6 +8,8 @@ import jobRoutes from './routes/job.routes.js';
 import userRoutes from './routes/user.routes.js';
 import applicationRoutes from './routes/application.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import atsJobRoutes from './routes/ats.job.routes.js';
+import atsApplicationRoutes from './routes/ats.application.routes.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
 import securityHeaders from './middlewares/security.middleware.js';
 import { globalRateLimiter, authRateLimiter } from './middlewares/rateLimit.middleware.js';
@@ -50,7 +52,9 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/jobs', atsJobRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/applications', atsApplicationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/health', healthRoutes);
 

@@ -4,7 +4,8 @@ import Button from '../common/Button';
 import Input from '../common/Input';
 import { useToast } from '../common/Toast';
 import { createJobApi, updateJobApi } from '../../api/job.api';
-import { Briefcase, AlertCircle, Sparkles } from 'lucide-react';
+import EvaluationCriteriaSection from './EvaluationCriteriaSection';
+import { Briefcase } from 'lucide-react';
 
 const INITIAL_FORM = {
   title: '',
@@ -449,6 +450,18 @@ export default function JobFormModal({
             />
           </div>
         </div>
+
+        {/* ATS Evaluation Criteria — only available for existing jobs */}
+        {isEditing && jobToEdit?._id && (
+          <div className="pt-2">
+            <EvaluationCriteriaSection jobId={jobToEdit._id} />
+          </div>
+        )}
+        {!isEditing && (
+          <p className="text-xs text-slate-400 text-center py-1">
+            💡 After saving this job, you can define ATS evaluation criteria for automated resume matching.
+          </p>
+        )}
       </form>
     </Modal>
   );

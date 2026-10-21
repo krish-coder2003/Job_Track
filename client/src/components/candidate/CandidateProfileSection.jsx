@@ -6,7 +6,6 @@ import Input from '../common/Input';
 import Badge from '../common/Badge';
 import { useToast } from '../common/Toast';
 import {
-  getMyProfileApi,
   updateMyProfileApi,
   uploadResumeApi,
   downloadMyResumeApi,

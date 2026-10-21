@@ -8,7 +8,8 @@
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
     "lint": "eslint .",
-    "test": "node --test --test-concurrency=1 --test-reporter=spec test/user.model.test.js test/auth.register.test.js test/auth.login.test.js test/auth.authorization.test.js test/job.crud.test.js test/job.discovery.test.js test/user.profile.test.js test/job.application.test.js test/job.recruiter.test.js test/admin.test.js test/security.audit.test.js",
+    "test": "node --test --test-concurrency=1 --test-reporter=spec test/user.model.test.js test/auth.register.test.js test/auth.login.test.js test/auth.authorization.test.js test/job.crud.test.js test/job.discovery.test.js test/user.profile.test.js test/job.application.test.js test/job.recruiter.test.js test/admin.test.js test/security.audit.test.js test/ats.test.js",
+    "test:ats": "node --test --test-reporter=spec test/ats.test.js",
     "test:security": "node --test --test-reporter=spec test/security.audit.test.js",
     "test:model": "node --test --test-reporter=spec test/user.model.test.js",
     "test:register": "node --test --test-reporter=spec test/auth.register.test.js",
@@ -33,6 +34,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.11.0",
     "cookie-parser": "^1.4.7",
@@ -40,9 +42,11 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.13.0",
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0",
-    "multer": "^2.4.0"
+    "multer": "^2.4.0",
+    "pdf-parse": "^2.4.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",

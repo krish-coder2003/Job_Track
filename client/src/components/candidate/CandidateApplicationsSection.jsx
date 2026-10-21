@@ -11,9 +11,7 @@ import { downloadMyResumeApi } from '../../api/user.api';
 import {
   formatDate,
   formatApplicationStatus,
-  formatJobType,
   formatWorkMode,
-  formatSalary,
 } from '../../utils/jobUtils';
 import {
   Briefcase,
@@ -24,7 +22,6 @@ import {
   Eye,
   XCircle,
   FileText,
-  Building2,
   MapPin,
   ExternalLink,
   ChevronLeft,

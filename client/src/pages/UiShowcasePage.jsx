@@ -23,7 +23,6 @@ import {
   RefreshCw,
   CheckCircle2,
   Briefcase,
-  Play,
 } from 'lucide-react';
 
 export default function UiShowcasePage() {
