@@ -22,15 +22,15 @@ const SUPPORTED_MIME_TYPES = {
 // pdf-parse and mammoth have top-level side effects on import, so we load them
 // only when actually needed to avoid slowing down server startup.
 
-let pdfParse = null;
+let PDFParseClass = null;
 let mammoth = null;
 
 async function getPdfParse() {
-  if (!pdfParse) {
-    const mod = await import('pdf-parse/lib/pdf-parse.js');
-    pdfParse = mod.default;
+  if (!PDFParseClass) {
+    const mod = await import('pdf-parse');
+    PDFParseClass = mod.PDFParse || mod.default?.PDFParse || mod.default;
   }
-  return pdfParse;
+  return PDFParseClass;
 }
 
 async function getMammoth() {
@@ -102,24 +102,30 @@ function normaliseText(raw) {
  * @returns {Promise<{ text: string, pageCount: number | null, warning: string | null }>}
  */
 async function extractFromPdf(buffer) {
-  const parse = await getPdfParse();
+  if (!buffer || buffer.length === 0) {
+    return {
+      text: '',
+      pageCount: null,
+      warning: 'PDF buffer is empty.',
+    };
+  }
+
   try {
-    const result = await parse(buffer, {
-      // Disable the default file-render test (avoids console noise in tests)
-      version: 'default',
-    });
+    const PDFParse = await getPdfParse();
+    const parser = new PDFParse({ data: new Uint8Array(buffer) });
+    const result = await parser.getText();
 
-    const text = normaliseText(result.text || '');
+    const text = normaliseText(result?.text || '');
 
-    if (!text || text.trim().length < 20) {
+    if (!text || text.trim().length === 0) {
       return {
         text: '',
-        pageCount: result.numpages || null,
+        pageCount: result?.total || null,
         warning: 'PDF was parsed but contained no readable text (may be image-based or encrypted).',
       };
     }
 
-    return { text, pageCount: result.numpages || null, warning: null };
+    return { text, pageCount: result?.total || null, warning: null };
   } catch (err) {
     // Do not rethrow — return a structured failure the caller can act on
     return {

@@ -7,7 +7,8 @@ import atsService from '../services/ats.service.js';
  */
 export const upsertJobCriteria = async (req, res, next) => {
   try {
-    const criteria = await atsService.saveCriteria(req.params.jobId, req.body, req.user);
+    const jobId = req.params.jobId || req.params.id;
+    const criteria = await atsService.saveCriteria(jobId, req.body, req.user);
     res.status(200).json({
       success: true,
       message: 'Evaluation criteria saved successfully.',
@@ -25,7 +26,8 @@ export const upsertJobCriteria = async (req, res, next) => {
  */
 export const getJobCriteria = async (req, res, next) => {
   try {
-    const criteria = await atsService.getCriteriaForJob(req.params.jobId);
+    const jobId = req.params.jobId || req.params.id;
+    const criteria = await atsService.getCriteriaForJob(jobId);
     res.status(200).json({
       success: true,
       data: { criteria: criteria || null },
@@ -83,7 +85,8 @@ export const getReport = async (req, res, next) => {
  */
 export const getJobReports = async (req, res, next) => {
   try {
-    const reportsMap = await atsService.getATSReportsForJob(req.params.jobId, req.user);
+    const jobId = req.params.jobId || req.params.id;
+    const reportsMap = await atsService.getATSReportsForJob(jobId, req.user);
     res.status(200).json({
       success: true,
       data: { reports: reportsMap },

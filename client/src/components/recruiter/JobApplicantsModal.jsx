@@ -96,17 +96,17 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
       const list = response.data?.applications || [];
       setApplicants(list);
 
-      // Keep selected applicant up to date
-      if (selectedApplicant) {
-        const updated = list.find((a) => a._id === selectedApplicant._id);
-        if (updated) setSelectedApplicant(updated);
-      }
+      // Keep selected applicant up to date without triggering dependency cycles
+      setSelectedApplicant((prev) => {
+        if (!prev) return null;
+        return list.find((a) => a._id === prev._id) || null;
+      });
     } catch (err) {
       setError(err.message || 'Failed to retrieve applicants for this position.');
     } finally {
       setIsLoading(false);
     }
-  }, [job?._id, statusFilter, searchQuery, selectedApplicant]);
+  }, [job?._id, statusFilter, searchQuery]);
 
   // Fetch ATS score summaries for the job
   const fetchAtsReports = useCallback(async () => {
@@ -123,13 +123,13 @@ export default function JobApplicantsModal({ isOpen, onClose, job }) {
     if (isOpen && job?._id) {
       fetchApplicants();
       fetchAtsReports();
-    } else {
+    } else if (!isOpen) {
       setSelectedApplicant(null);
       setStatusFilter('all');
       setSearchQuery('');
       setAtsReports({});
     }
-  }, [isOpen, job?._id, statusFilter, searchQuery, fetchApplicants, fetchAtsReports]);
+  }, [isOpen, job?._id, fetchApplicants, fetchAtsReports]);
 
   // Handle stage/status update with transition validation
   const handleStatusChange = async (applicationId, newStatus, optionalNote = '') => {

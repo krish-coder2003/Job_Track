@@ -35,7 +35,12 @@ async function runAdminTests() {
   // Clean prior test artifacts
   await Application.deleteMany({});
   await Job.deleteMany({ company: { $regex: /AdminTest/i } });
-  await User.deleteMany({ email: { $regex: /@(admintest\.local|jobtrack\.local)$/i } });
+  await User.deleteMany({
+    $or: [
+      { email: { $regex: /@(admintest\.local|jobtrack\.local)$/i } },
+      { role: USER_ROLES.ADMIN },
+    ],
+  });
 
   try {
     // -------------------------------------------------------------

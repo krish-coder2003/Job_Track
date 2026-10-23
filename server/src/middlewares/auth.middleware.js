@@ -264,7 +264,7 @@ export const checkJobOwnership = async (req, res, next) => {
       return next(new UnauthorizedError('Authentication required.'));
     }
 
-    const { id } = req.params;
+    const id = req.params.jobId || req.params.id;
     if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return next(new BadRequestError(`Invalid job ID format: ${id}`));
     }

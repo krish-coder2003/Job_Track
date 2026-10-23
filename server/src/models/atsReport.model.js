@@ -53,7 +53,6 @@ const atsReportSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Application',
       required: [true, 'Application reference is required'],
-      index: true,
     },
     job: {
       type: mongoose.Schema.Types.ObjectId,

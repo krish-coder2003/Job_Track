@@ -34,9 +34,12 @@ dotenv.config();
 const API = '/api';
 
 async function registerAndLogin(userData) {
-  const regRes = await request(app).post(`${API}/auth/register`).send(userData);
-  const token = regRes.body?.data?.token;
-  return token;
+  await request(app).post(`${API}/auth/register`).send(userData);
+  const loginRes = await request(app).post(`${API}/auth/login`).send({
+    email: userData.email,
+    password: userData.password,
+  });
+  return loginRes.body?.data?.token;
 }
 
 function uniqueEmail(prefix) {
@@ -94,9 +97,11 @@ Keywords: agile, microservices, distributed systems
 before(async () => {
   await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/jobtrack_test');
 
-  // Clean ATS collections before tests
+  // Clean ATS collections and test users before tests
   await JobCriteria.deleteMany({});
   await ATSReport.deleteMany({});
+  await User.deleteMany({ email: /@ats-test\.com$/i });
+  await Application.deleteMany({ 'resume.filename': 'test-resume.pdf' });
 
   const recruiterData = { name: 'ATS Recruiter', email: uniqueEmail('ats-rec'), password: 'Password123!', role: 'recruiter' };
   const recruiter2Data = { name: 'ATS Recruiter2', email: uniqueEmail('ats-rec2'), password: 'Password123!', role: 'recruiter' };
@@ -173,6 +178,8 @@ before(async () => {
 after(async () => {
   await JobCriteria.deleteMany({});
   await ATSReport.deleteMany({});
+  await User.deleteMany({ email: /@ats-test\.com$/i });
+  await Application.deleteMany({ 'resume.filename': 'test-resume.pdf' });
   await mongoose.disconnect();
 });
 

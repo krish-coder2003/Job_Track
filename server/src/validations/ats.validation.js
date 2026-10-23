@@ -10,7 +10,8 @@ export const validateCriteria = (req, res, next) => {
   const errors = [];
 
   // Validate jobId param
-  if (!mongoose.Types.ObjectId.isValid(req.params.jobId)) {
+  const jobId = req.params.jobId || req.params.id;
+  if (!jobId || !mongoose.Types.ObjectId.isValid(jobId)) {
     return next(new BadRequestError('Invalid job ID format.'));
   }
 

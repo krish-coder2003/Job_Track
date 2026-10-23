@@ -71,7 +71,7 @@ export const createRateLimiter = ({
 // Global API rate limiter (allows 500 requests per 15 minutes per IP)
 export const globalRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  max: process.env.NODE_ENV === 'production' ? 500 : 2000,
   message: 'Too many requests from this IP, please try again later.',
   skip: (req) => process.env.NODE_ENV === 'test' && !req.headers['x-test-rate-limit'],
 });

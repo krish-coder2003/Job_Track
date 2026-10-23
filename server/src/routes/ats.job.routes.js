@@ -23,7 +23,7 @@ const router = Router();
  * @access  Private (Recruiter owner or Admin)
  */
 router.put(
-  '/:jobId/criteria',
+  ['/:jobId/criteria', '/:id/criteria'],
   authenticate,
   requireActiveAccount,
   authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
@@ -31,26 +31,16 @@ router.put(
   upsertJobCriteria
 );
 
-/**
- * @route   GET /api/jobs/:jobId/criteria
- * @desc    Retrieve ATS evaluation criteria for a job
- * @access  Private (Recruiter owner or Admin)
- */
 router.get(
-  '/:jobId/criteria',
+  ['/:jobId/criteria', '/:id/criteria'],
   authenticate,
   requireActiveAccount,
   authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
   getJobCriteria
 );
 
-/**
- * @route   GET /api/jobs/:jobId/ats-reports
- * @desc    Retrieve ATS score summaries for all applicants to a job
- * @access  Private (Recruiter owner or Admin)
- */
 router.get(
-  '/:jobId/ats-reports',
+  ['/:jobId/ats-reports', '/:id/ats-reports'],
   authenticate,
   requireActiveAccount,
   authorize(USER_ROLES.RECRUITER, USER_ROLES.ADMIN),
